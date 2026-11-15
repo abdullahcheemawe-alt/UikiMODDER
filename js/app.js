@@ -1,69 +1,108 @@
 "use strict";
 
-// Firebase SDK Imports
-import { initializeApp } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
+// ========================================
+// FIREBASE SDK IMPORTS
+// ========================================
 
-import { getAuth } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
+import {
+    initializeApp,
+    getApps,
+    getApp
+} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-app.js";
 
-import { getFirestore } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+import {
+    getAuth
+} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-auth.js";
 
-// Supabase Import
+import {
+    getFirestore
+} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+
+// ========================================
+// SUPABASE IMPORT
+// ========================================
+
 import { supabase } from "./supabase.js";
 
-// Firebase Configuration
+// ========================================
+// FIREBASE CONFIGURATION
+// ========================================
+
 const firebaseConfig = {
-apiKey: "AIzaSyCEaZ4ik3gcMScg23FVS99OLKxUnB8LHsY",
-authDomain: "uikimodder-65617.firebaseapp.com",
-projectId: "uikimodder-65617",
-storageBucket: "uikimodder-65617.firebasestorage.app",
-messagingSenderId: "597231043468",
-appId: "1:597231043468:web:380a56d46e741cd45b8ca9"
+    apiKey: "AIzaSyCEaZ4ik3gcMScg23FVS99OLKxUnB8LHsY",
+    authDomain: "uikimodder-65617.firebaseapp.com",
+    projectId: "uikimodder-65617",
+    storageBucket: "uikimodder-65617.firebasestorage.app",
+    messagingSenderId: "597231043468",
+    appId: "1:597231043468:web:380a56d46e741cd45b8ca9"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// ========================================
+// INITIALIZE FIREBASE
+// ========================================
 
-// Initialize Authentication
+const app = getApps().length
+    ? getApp()
+    : initializeApp(firebaseConfig);
+
+// ========================================
+// FIREBASE SERVICES
+// ========================================
+
 const auth = getAuth(app);
 
-// Initialize Firestore
 const db = getFirestore(app);
 
-// Website Initialization
-document.addEventListener("DOMContentLoaded", () => {
-console.log("UIKIMODDER initialized successfully!");
-console.log("Firebase connected!");
-console.log("Authentication initialized!");
-console.log("Firestore initialized!");
+// ========================================
+// GLOBAL CONNECTIONS
+// ========================================
 
-initializeWebsite();
+window.firebaseApp = app;
+
+window.firebaseAuth = auth;
+
+window.firebaseDB = db;
+
+window.supabaseClient = supabase;
+
+// ========================================
+// WEBSITE INITIALIZATION
+// ========================================
+
+document.addEventListener("DOMContentLoaded", () => {
+
+    console.log("UIKIMODDER initialized.");
+
+    initializeWebsite();
 
 });
 
 function initializeWebsite() {
-initializeNavigation();
-initializeAppStatus();
+
+    initializeNavigation();
+
+    initializeAppStatus();
+
 }
 
 function initializeNavigation() {
-const menuButton = document.querySelector("#menuButton");
-const navigation = document.querySelector("#navigation");
 
-if (!menuButton || !navigation) return;
+    const menuButton = document.querySelector("#menuButton");
 
-menuButton.addEventListener("click", () => {
-    navigation.classList.toggle("active");
-});
+    const navigation = document.querySelector("#navigation");
+
+    if (!menuButton || !navigation) return;
+
+    menuButton.addEventListener("click", () => {
+
+        navigation.classList.toggle("active");
+
+    });
 
 }
 
 function initializeAppStatus() {
-document.documentElement.dataset.app = "ready";
+
+    document.documentElement.dataset.app = "ready";
+
 }
-
-// Firebase instances
-window.firebaseAuth = auth;
-window.firebaseDB = db;
-
-// Supabase instance
-window.supabaseClient = supabase;
