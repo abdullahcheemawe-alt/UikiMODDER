@@ -1108,3 +1108,39 @@ button:disabled {
         transition-duration: 0.01ms !important;
     }
 }
+/* =========================================
+   FIX: FULL WIDTH NAVBAR & FOOTER
+========================================= */
+
+html,
+body {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.navbar,
+.footer {
+    width: 100vw !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box;
+}
+
+/* Footer Content Alignment */
+.footer {
+    text-align: center;
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* Mobile Width Fix */
+@media (max-width: 650px) {
+    .navbar,
+    .footer {
+        width: 100vw !important;
+        max-width: none !important;
+    }
+}
