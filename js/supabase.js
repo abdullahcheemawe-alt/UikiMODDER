@@ -1,32 +1,58 @@
 "use strict";
 
+// ========================================
+// SUPABASE SDK
+// ========================================
+
 import {
-createClient
+    createClient
 } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Supabase Configuration
-const SUPABASE_URL = "https://netztjoroixlbqntbnxi.supabase.co";
+// ========================================
+// SUPABASE CONFIGURATION
+// ========================================
 
-const SUPABASE_ANON_KEY = "sb_publishable_0-_r-gxKmsraV_ew5uXG_W_UdkuX7tv";
+const SUPABASE_URL =
+    "https://netztjoroixlbqntbnxi.supabase.co";
 
-// Initialize Supabase with Firebase Authentication
+// Apni Dashboard wali exact Publishable Key paste karo
+const SUPABASE_PUBLISHABLE_KEY =
+    "PASTE_YOUR_EXACT_PUBLISHABLE_KEY_HERE";
+
+// ========================================
+// FIREBASE AUTHENTICATION CONNECTION
+// ========================================
+
 export const supabase = createClient(
-SUPABASE_URL,
-SUPABASE_ANON_KEY,
-{
-accessToken: async () => {
-const user = window.firebaseAuth?.currentUser;
 
-        if (!user) {
-            return null;
+    SUPABASE_URL,
+
+    SUPABASE_PUBLISHABLE_KEY,
+
+    {
+
+        accessToken: async () => {
+
+            const user = window.firebaseAuth?.currentUser;
+
+            if (!user) {
+
+                return null;
+
+            }
+
+            return await user.getIdToken();
+
         }
 
-        return await user.getIdToken();
     }
-}
 
 );
 
-console.log("Supabase client initialized successfully.");
+// ========================================
+// GLOBAL SUPABASE CLIENT
+// ========================================
 
 window.supabaseClient = supabase;
+
+console.log("Supabase client initialized.");
