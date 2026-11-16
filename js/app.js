@@ -317,6 +317,30 @@ function initializeGameControls() {
 }
 
 
+
+async function makeUploadOptimizedIcon(file) {
+    if (!("createImageBitmap" in window)) return file;
+    const bitmap = await createImageBitmap(file);
+    try {
+        const maxSide = 512;
+        const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        const context = canvas.getContext("2d", { alpha: false });
+        if (!context) return file;
+        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", 0.72));
+        if (!blob || blob.size >= file.size) return file;
+        return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".webp", {
+            type: "image/webp",
+            lastModified: Date.now()
+        });
+    } finally {
+        bitmap.close?.();
+    }
+}
+
 function uploadFileWithProgress(file, storageRef, label) {
     return new Promise((resolve, reject) => {
         const task = uploadBytesResumable(storageRef, file, {
@@ -436,20 +460,19 @@ function initializeNavigation() {
         setStatus($("#uploadStatus"), "Uploading game icon...");
         try {
             const itemId = crypto.randomUUID();
-            const safeIconName = iconFile.name.replace(/[^\w.-]/g, "_");
+            setStatus($("#uploadStatus"), "Optimizing game icon...");
+            const optimizedIcon = await makeUploadOptimizedIcon(iconFile);
+            const safeIconName = optimizedIcon.name.replace(/[^\w.-]/g, "_");
             const iconRef = ref(storage, "published/" + user.uid + "/" + itemId + "/icon/" + safeIconName);
-            const uploadedIconRef = await uploadFileWithProgress(iconFile, iconRef, "Game icon");
+            const uploadedIconRef = await uploadFileWithProgress(optimizedIcon, iconRef, "Game icon");
             const iconUrl = await getDownloadURL(uploadedIconRef);
 
-            setStatus($("#uploadStatus"), "Icon uploaded. Preparing game package...");
-            const safeName = file.name.replace(/[^\w.-]/g, "_");
-            const fileRef = ref(storage, "published/" + user.uid + "/" + itemId + "/package/" + safeName);
-            const uploadedPackageRef = await uploadFileWithProgress(file, fileRef, "Game package");
-            const packageStorageUrl = await getDownloadURL(uploadedPackageRef);
+            // The website's Download button uses the supplied MediaFire/direct URL.
+            // Do not upload a second, unused copy of the game package to Firebase.
+            setStatus($("#uploadStatus"), "Icon uploaded. Publishing game details...");
             await addDoc(collection(db, "games"), {
                 name, description, category, type: itemType,
                 downloadUrl: downloadUrlInput,
-                packageStorageUrl,
                 imageUrl: iconUrl, iconFileName: iconFile.name, fileName: file.name, fileSize: file.size,
                 active: true, published: true, createdBy: user.uid,
                 createdAt: serverTimestamp()
