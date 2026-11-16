@@ -304,6 +304,7 @@ function initializeAuthentication() {
         $("#loginOpen")?.classList.toggle("hidden", loggedIn);
         $("#signupOpen")?.classList.toggle("hidden", loggedIn);
         $("#logoutBtn")?.classList.toggle("hidden", !loggedIn);
+        $("#accountWelcome")?.classList.toggle("hidden", !loggedIn);
 
         if (user) {
             console.log("Signed in:", user.email);
