@@ -17,7 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="style.css?v=8">
+    <link rel="stylesheet" href="style.css?v=9">
 </head>
 
 <body>
@@ -241,9 +241,9 @@
         <!-- Upload Form -->
         <div class="upload-card">
 
-            <h3>Upload New Game</h3>
+            <h3>Upload New Game or App</h3>
 
-            <p>Add a new game to your UIKIMODDER collection.</p>
+            <p>Publish a game or app to your UIKIMODDER collection.</p>
 
 
             <form id="uploadForm">
@@ -271,8 +271,14 @@
                 ></textarea>
 
 
+                <label for="itemType">Content Type</label>
+                <select id="itemType" required>
+                    <option value="game">Game</option>
+                    <option value="app">App</option>
+                </select>
+
                 <label for="gameCategory">
-                    Game Category
+                    Game / App Category
                 </label>
 
                 <select id="gameCategory" required>
@@ -449,11 +455,11 @@
             <h2>Discover <span class="gradient-text">Apps.</span></h2>
             <p>Useful apps and gaming tools, all in one place.</p>
         </div>
-        <div class="coming-soon-card">
-            <div class="coming-icon">▦</div>
-            <h3>Apps are on the way</h3>
-            <p>We are preparing a curated collection of apps for your universe.</p>
-            <span class="coming-badge">COMING SOON</span>
+        <div id="appsContainer" class="games-grid" aria-live="polite"></div>
+        <div id="appsEmptyState" class="empty-state" role="status">
+            <div>▦</div>
+            <h3>No Apps Available Yet</h3>
+            <p>New apps will appear here when the admin publishes them.</p>
         </div>
     </main>
 
@@ -496,6 +502,6 @@
     <!-- JAVASCRIPT -->
     
 
-    <script type="module" src="./js/app.js?v=8"></script>
+    <script type="module" src="./js/app.js?v=9"></script>
 </body>
 </html>
