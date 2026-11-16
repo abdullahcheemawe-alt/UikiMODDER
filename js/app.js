@@ -104,12 +104,59 @@ function escapeHTML(value = "") {
     })[char]);
 }
 
-function showStore(scroll = true) {
+function setActiveBottomTab(view) {
+    document.querySelectorAll(".bottom-nav-item").forEach((button) => {
+        button.classList.toggle("active", button.dataset.view === view || (view === "search" && button.dataset.view === "games"));
+    });
+}
+
+function hideMainViews() {
     $(".hero-section")?.classList.add("hidden");
+    $("#storeSection")?.classList.add("hidden");
+    $("#appsSection")?.classList.add("hidden");
+    $("#profileSection")?.classList.add("hidden");
     $("#adminSection")?.classList.add("hidden");
+}
+
+function showStore(scroll = true) {
+    hideMainViews();
     $("#storeSection")?.classList.remove("hidden");
+    $("#bottomNav")?.classList.remove("hidden");
+    setActiveBottomTab("games");
     if (scroll) $("#storeSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
     loadGames();
+}
+
+function showApps() {
+    hideMainViews();
+    $("#appsSection")?.classList.remove("hidden");
+    $("#bottomNav")?.classList.remove("hidden");
+    setActiveBottomTab("apps");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showProfile(user = auth.currentUser) {
+    if (!user) return openAuthModal("signin");
+    hideMainViews();
+    $("#profileSection")?.classList.remove("hidden");
+    $("#bottomNav")?.classList.remove("hidden");
+    setActiveBottomTab("profile");
+    const display = user.displayName || user.email?.split("@")[0] || "Gamer";
+    $("#profileName").textContent = display;
+    $("#profileEmail").textContent = user.email || "Email not available";
+    $("#profileInitial").textContent = display.trim().charAt(0).toUpperCase() || "G";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function performSignOut() {
+    try {
+        await signOut(auth);
+        setStatus($("#authStatus"), "");
+        closeAuthModal();
+    } catch (error) {
+        console.error("Sign-out failed:", error);
+        alert("Sign out nahi ho saka. Dobara koshish karein.");
+    }
 }
 
 function renderGames() {
@@ -146,6 +193,7 @@ function renderGames() {
             '</span>' + action + '</div></div></article>';
     }).join("");
 
+    $("#retryGamesBtn")?.remove();
     empty.classList.toggle("hidden", filtered.length !== 0);
     if (!filtered.length) {
         const title = $("#emptyState h3");
@@ -175,9 +223,24 @@ async function loadGames() {
         allGames = [];
         const empty = $("#emptyState");
         empty?.classList.remove("hidden");
-        if ($("#emptyState h3")) $("#emptyState h3").textContent = "Games Could Not Load";
+        if ($("#emptyState h3")) $("#emptyState h3").textContent =
+            error.code === "permission-denied" ? "Game Library Access Blocked" : "Games Could Not Load";
         if ($("#emptyState p")) $("#emptyState p").textContent =
-            "Please check your connection or Firestore access, then refresh the page.";
+            error.code === "permission-denied"
+                ? "Firebase Firestore rules are blocking this account from reading the games collection. The library needs public or signed-in read permission."
+                : "Connection to the game library failed. Please try again.";
+        if (!$("#retryGamesBtn")) {
+            const retry = document.createElement("button");
+            retry.id = "retryGamesBtn";
+            retry.className = "retry-games-btn";
+            retry.type = "button";
+            retry.textContent = "TRY AGAIN";
+            retry.addEventListener("click", () => {
+                container.dataset.loading = "false";
+                loadGames();
+            });
+            $("#emptyState")?.append(retry);
+        }
     } finally {
         container.dataset.loading = "false";
     }
@@ -206,21 +269,27 @@ function initializeNavigation() {
         tab.addEventListener("click", () => setAuthMode(tab.dataset.mode));
     });
 
-    $("#logoutBtn")?.addEventListener("click", async () => {
-        try {
-            await signOut(auth);
-            setStatus($("#authStatus"), "");
-            closeAuthModal();
-        } catch (error) {
-            console.error("Sign-out failed:", error);
-            alert("Sign out nahi ho saka. Dobara koshish karein.");
-        }
+    $("#logoutBtn")?.addEventListener("click", performSignOut);
+    $("#profileSignout")?.addEventListener("click", performSignOut);
+
+    document.querySelectorAll(".bottom-nav-item").forEach((button) => {
+        button.addEventListener("click", () => {
+            const view = button.dataset.view;
+            if (view === "games") showStore();
+            if (view === "apps") showApps();
+            if (view === "profile") showProfile();
+            if (view === "search") {
+                showStore();
+                window.setTimeout(() => $("#searchInput")?.focus(), 250);
+            }
+        });
     });
 
     document.querySelectorAll('.nav-links a[href="#home"]').forEach((link) => {
         link.addEventListener("click", (event) => {
             event.preventDefault();
-            $("#storeSection")?.classList.add("hidden");
+            hideMainViews();
+            $("#bottomNav")?.classList.add("hidden");
             $(".hero-section")?.classList.remove("hidden");
             $(".hero-section")?.scrollIntoView({ behavior: "smooth" });
         });
@@ -303,7 +372,8 @@ function initializeAuthentication() {
         const loggedIn = Boolean(user);
         $("#loginOpen")?.classList.toggle("hidden", loggedIn);
         $("#signupOpen")?.classList.toggle("hidden", loggedIn);
-        $("#logoutBtn")?.classList.toggle("hidden", !loggedIn);
+        $("#logoutBtn")?.classList.toggle("hidden", true);
+        $("#bottomNav")?.classList.toggle("hidden", !loggedIn);
         $("#accountWelcome")?.classList.toggle("hidden", !loggedIn);
 
         if (user) {
@@ -312,10 +382,13 @@ function initializeAuthentication() {
             const label = $("#accountWelcome");
             if (label) label.textContent = "Welcome back, " + (user.displayName || user.email?.split("@")[0] || "Gamer");
             showStore(false);
+            showProfile(user);
+            showStore(false);
         } else {
             document.documentElement.dataset.auth = "signed-out";
             allGames = [];
-            $("#storeSection")?.classList.add("hidden");
+            hideMainViews();
+            $("#bottomNav")?.classList.add("hidden");
             $(".hero-section")?.classList.remove("hidden");
         }
     });
