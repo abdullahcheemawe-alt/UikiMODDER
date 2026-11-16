@@ -1198,3 +1198,102 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
     .loading-spinner, .button-spinner, .status-loading::before { animation: none; }
 }
+
+
+/* =========================================
+   APP-STYLE UIKIMODDER NAV + SECONDARY VIEWS
+========================================= */
+body { padding-bottom: 92px; }
+.navbar { position: sticky; top: 0; z-index: 80; backdrop-filter: blur(18px); }
+.nav-buttons #accountWelcome, .nav-buttons #logoutBtn { display: none !important; }
+
+.bottom-nav {
+    position: fixed;
+    z-index: 200;
+    left: 50%;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: min(560px, calc(100% - 24px));
+    min-height: 76px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid rgba(150,170,255,.16);
+    border-radius: 23px;
+    background: rgba(12,16,35,.92);
+    box-shadow: 0 14px 50px rgba(0,0,0,.42), 0 0 30px rgba(0,220,255,.07);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+}
+.bottom-nav-item {
+    min-width: 0;
+    min-height: 58px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    border: 0;
+    border-radius: 17px;
+    color: #9ba7c8;
+    background: transparent;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s ease, color .2s ease, transform .2s ease;
+}
+.bottom-nav-icon { font-size: 22px; line-height: 1; }
+.bottom-nav-item.active {
+    color: #eafaff;
+    background: linear-gradient(120deg, rgba(0,220,255,.24), rgba(139,92,246,.25));
+    box-shadow: inset 0 0 0 1px rgba(0,220,255,.2);
+}
+.bottom-nav-item:active { transform: scale(.96); }
+
+.secondary-view {
+    width: min(1100px, 100%);
+    min-height: 68vh;
+    margin: 0 auto;
+    padding: 58px 6% 120px;
+    animation: slideUp .45s ease both;
+}
+.view-heading { margin-bottom: 32px; }
+.view-heading h2 { margin-top: 12px; font-size: clamp(34px, 6vw, 48px); font-weight: 900; }
+.view-heading p { margin-top: 10px; color: var(--muted); line-height: 1.7; }
+.coming-soon-card, .profile-card {
+    width: min(540px, 100%);
+    margin: 20px auto 0;
+    padding: 38px 28px;
+    text-align: center;
+    border: 1px solid rgba(0,220,255,.2);
+    border-radius: 25px;
+    background: radial-gradient(circle at 50% 0%, rgba(81,92,190,.22), transparent 55%), linear-gradient(145deg, rgba(20,27,58,.96), rgba(9,14,33,.96));
+    box-shadow: 0 24px 65px rgba(0,0,0,.22);
+}
+.coming-icon { width: 70px; height: 70px; display:grid; place-items:center; margin:0 auto 20px; border-radius:22px; color:#9eefff; font-size:36px; background:rgba(0,220,255,.1); border:1px solid rgba(0,220,255,.2); }
+.coming-soon-card h3, .profile-card h3 { color:#fff; font-size:23px; margin-bottom:10px; }
+.coming-soon-card p, .profile-card > p { color:var(--muted); line-height:1.7; font-size:14px; }
+.coming-badge { display:inline-block; margin-top:22px; padding:8px 14px; border:1px solid rgba(160,120,255,.35); border-radius:30px; color:#c7a7ff; background:rgba(160,120,255,.09); font-size:10px; font-weight:800; letter-spacing:1.5px; }
+.profile-avatar { width:84px; height:84px; display:grid; place-items:center; margin:0 auto 18px; border-radius:50%; color:#081126; background:linear-gradient(135deg,#00e5ff,#9a63ff); font-size:34px; font-weight:900; box-shadow:0 0 35px rgba(0,220,255,.2); }
+.profile-divider { height:1px; margin:28px 0 20px; background:rgba(160,180,255,.14); }
+.profile-detail { display:flex; justify-content:space-between; gap:15px; color:var(--muted); font-size:13px; text-align:left; }
+.profile-detail strong { color:#8fffd4; }
+.online-dot { display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; background:#49f5ae; box-shadow:0 0 10px #49f5ae; }
+.profile-signout, .retry-games-btn { margin-top:26px; padding:13px 22px; border:1px solid rgba(255,115,145,.35); border-radius:12px; color:#ff9bae; background:rgba(255,90,120,.09); font:inherit; font-size:13px; font-weight:800; cursor:pointer; transition:.2s ease; }
+.profile-signout:hover { background:rgba(255,90,120,.17); transform:translateY(-2px); }
+.retry-games-btn { border-color:rgba(0,220,255,.35); color:#9eefff; background:rgba(0,220,255,.09); }
+@media (min-width: 900px) {
+    .bottom-nav { width:560px; }
+    body { padding-bottom:110px; }
+}
+@media (max-width: 650px) {
+    body { padding-bottom:104px; }
+    .secondary-view { padding:42px 5% 120px; }
+    .coming-soon-card, .profile-card { padding:32px 22px; }
+    .bottom-nav { min-height:74px; bottom:max(8px, env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .bottom-nav-item, .profile-signout { transition:none; }
+}
