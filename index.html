@@ -17,7 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
 </head>
 
 <body>
@@ -55,11 +55,7 @@
 
             <span id="accountWelcome" class="account-welcome hidden" aria-live="polite"></span>
 
-            <button id="logoutBtn" class="logout-btn hidden">
-                Sign Out
-            </button>
-
-        </div>
+</div>
 
     </header>
 
@@ -446,27 +442,57 @@
     </div>
 
 
-    <!-- FOOTER -->
-    <footer class="footer">
-
-        <div class="footer-logo">
-            UIKI<span>MODDER</span>
+    <!-- APPS VIEW -->
+    <main id="appsSection" class="secondary-view hidden">
+        <div class="view-heading">
+            <span class="section-label">YOUR DIGITAL TOOLKIT</span>
+            <h2>Discover <span class="gradient-text">Apps.</span></h2>
+            <p>Useful apps and gaming tools, all in one place.</p>
         </div>
+        <div class="coming-soon-card">
+            <div class="coming-icon">▦</div>
+            <h3>Apps are on the way</h3>
+            <p>We are preparing a curated collection of apps for your universe.</p>
+            <span class="coming-badge">COMING SOON</span>
+        </div>
+    </main>
 
-        <p>
-            Your world. Your games. Your universe.
-        </p>
+    <!-- PROFILE VIEW -->
+    <main id="profileSection" class="secondary-view hidden">
+        <div class="view-heading">
+            <span class="section-label">PLAYER SPACE</span>
+            <h2>Your <span class="gradient-text">Profile.</span></h2>
+            <p>Manage your UIKIMODDER account.</p>
+        </div>
+        <section class="profile-card">
+            <div class="profile-avatar" id="profileInitial">G</div>
+            <h3 id="profileName">Gamer</h3>
+            <p id="profileEmail">Your account email</p>
+            <div class="profile-divider"></div>
+            <div class="profile-detail"><span>Account status</span><strong><i class="online-dot"></i> Active</strong></div>
+            <button id="profileSignout" class="profile-signout" type="button">↗ &nbsp; Sign Out</button>
+        </section>
+    </main>
 
-        <small>
-            © <span id="currentYear"></span> UIKIMODDER. All Rights Reserved.
-        </small>
-
-    </footer>
-
+    <!-- MOBILE / APP-STYLE BOTTOM NAVIGATION -->
+    <nav id="bottomNav" class="bottom-nav hidden" aria-label="Main navigation">
+        <button class="bottom-nav-item active" data-view="games" type="button">
+            <span class="bottom-nav-icon">🎮</span><span>Games</span>
+        </button>
+        <button class="bottom-nav-item" data-view="apps" type="button">
+            <span class="bottom-nav-icon">▦</span><span>Apps</span>
+        </button>
+        <button class="bottom-nav-item" data-view="search" type="button">
+            <span class="bottom-nav-icon">⌕</span><span>Search</span>
+        </button>
+        <button class="bottom-nav-item" data-view="profile" type="button">
+            <span class="bottom-nav-icon">♙</span><span>You</span>
+        </button>
+    </nav>
 
     <!-- JAVASCRIPT -->
     
 
-    <script type="module" src="./js/app.js?v=4"></script>
+    <script type="module" src="./js/app.js?v=5"></script>
 </body>
 </html>
