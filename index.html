@@ -17,7 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=11">
 </head>
 
 <body>
@@ -298,6 +298,17 @@
                 </select>
 
 
+                <label for="gameDownloadUrl">Game / App Download Link (MediaFire or direct URL)</label>
+                <input
+                    type="url"
+                    id="gameDownloadUrl"
+                    placeholder="https://www.mediafire.com/file/..."
+                    required
+                    inputmode="url"
+                    autocomplete="url"
+                >
+                <small class="upload-help">Yahan MediaFire ka share link paste karein. User ke Download button par click karne se ye link open hoga.</small>
+
                 <label for="gameIcon">
                     Game Icon
                 </label>
@@ -509,6 +520,6 @@
     <!-- JAVASCRIPT -->
     
 
-    <script type="module" src="./js/app.js?v=10"></script>
+    <script type="module" src="./js/app.js?v=11"></script>
 </body>
 </html>
