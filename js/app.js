@@ -48,15 +48,9 @@ window.firebaseApp = app;
 window.firebaseAuth = auth;
 window.firebaseDB = db;
 
-// Supabase is optional for these page controls. A missing key or network issue
-// must not prevent Firebase sign-in, account creation, or Explore from working.
+// This website currently uses Firebase for authentication, game data, and package storage.
+// Supabase is intentionally not imported during startup so it cannot block page controls.
 window.supabaseClient = null;
-try {
-    const { supabase } = await import("./supabase.js");
-    window.supabaseClient = supabase;
-} catch (error) {
-    console.warn("Supabase could not be initialized. Firebase features remain available.", error);
-}
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -444,7 +438,9 @@ function initializeAuthentication() {
         $("#bottomNav")?.classList.toggle("hidden", !loggedIn);
         $("#accountWelcome")?.classList.toggle("hidden", !loggedIn);
         const isSuperAdmin = (user?.email || "").toLowerCase() === "abdullahcheemakv@gmail.com";
+        const bottomNav = $("#bottomNav");
         $("#adminUploadNav")?.classList.toggle("hidden", !isSuperAdmin);
+        bottomNav?.classList.toggle("admin-mode", isSuperAdmin);
 
         if (user) {
             console.log("Signed in:", user.email);
@@ -453,6 +449,7 @@ function initializeAuthentication() {
             if (label) label.textContent = "Welcome back, " + (user.displayName || user.email?.split("@")[0] || "Gamer");
             showStore(false);
         } else {
+            bottomNav?.classList.remove("admin-mode");
             document.documentElement.dataset.auth = "signed-out";
             allGames = [];
             hideMainViews();
