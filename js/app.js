@@ -102,6 +102,15 @@ function setAuthMode(mode) {
 let allGames = [];
 let activeCategory = "All";
 
+
+function getSafeExternalUrl(value = "") {
+    try {
+        const url = new URL(String(value).trim());
+        return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+    } catch {
+        return "";
+    }
+}
 function escapeHTML(value = "") {
     return String(value).replace(/[&<>"']/g, (char) => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -155,11 +164,12 @@ function renderApps() {
         const description = item.description || "Explore this app.";
         const image = item.imageUrl || item.iconUrl || item.thumbnail || item.image || "";
         const download = item.downloadUrl || item.fileUrl || item.url || item.downloadURL || "";
+        const safeDownload = getSafeExternalUrl(download);
         const art = image
             ? '<img src="' + escapeHTML(image) + '" alt="' + escapeHTML(name) + '" loading="lazy" onerror="this.style.display=\'none\'">'
             : '<span aria-hidden="true">▦</span>';
-        const action = download
-            ? '<a class="download-link" href="' + escapeHTML(download) + '" target="_blank" rel="noopener noreferrer">GET APP ↗</a>'
+        const action = safeDownload
+            ? '<a class="download-link" href="' + escapeHTML(safeDownload) + '" target="_blank" rel="noopener noreferrer">DOWNLOAD ↗</a>'
             : '<span class="category">Coming Soon</span>';
         return '<article class="game-card"><div class="game-art">' + art + '</div><div class="game-info"><h3>'
             + escapeHTML(name) + '</h3><p>' + escapeHTML(description)
@@ -227,11 +237,12 @@ function renderGames() {
         const category = game.category || "Other";
         const image = game.imageUrl || game.iconUrl || game.thumbnail || game.image || "";
         const download = game.downloadUrl || game.fileUrl || game.url || game.downloadURL || "";
+        const safeDownload = getSafeExternalUrl(download);
         const art = image
             ? '<img src="' + escapeHTML(image) + '" alt="' + escapeHTML(name) + '" loading="lazy" onerror="this.style.display=\'none\'">'
             : '<span aria-hidden="true">🎮</span>';
-        const action = download
-            ? '<a class="download-link" href="' + escapeHTML(download) + '" target="_blank" rel="noopener noreferrer">VIEW GAME ↗</a>'
+        const action = safeDownload
+            ? '<a class="download-link" href="' + escapeHTML(safeDownload) + '" target="_blank" rel="noopener noreferrer">DOWNLOAD ↗</a>'
             : '<span class="category">Coming Soon</span>';
         return '<article class="game-card"><div class="game-art">' + art + '</div><div class="game-info"><h3>' +
             escapeHTML(name) + '</h3><p>' + escapeHTML(description) +
@@ -352,10 +363,22 @@ function initializeNavigation() {
         const description = $("#gameDescription")?.value.trim();
         const category = $("#gameCategory")?.value;
         const itemType = $("#itemType")?.value || "game";
+        const downloadUrlInput = $("#gameDownloadUrl")?.value.trim() || "";
         const iconFile = $("#gameIcon")?.files?.[0];
         const file = $("#gameFile")?.files?.[0];
-        if (!name || !description || !category || !iconFile || !file) {
-            setStatus($("#uploadStatus"), "Game details, icon image aur package file select karein.", true);
+        if (!name || !description || !category || !downloadUrlInput || !iconFile || !file) {
+            setStatus($("#uploadStatus"), "Game details, download link, icon image aur package file complete karein.", true);
+            return;
+        }
+        let parsedDownloadUrl;
+        try {
+            parsedDownloadUrl = new URL(downloadUrlInput);
+        } catch {
+            setStatus($("#uploadStatus"), "Valid MediaFire ya download link paste karein.", true);
+            return;
+        }
+        if (!["https:", "http:"].includes(parsedDownloadUrl.protocol)) {
+            setStatus($("#uploadStatus"), "Download link http:// ya https:// se start hona chahiye.", true);
             return;
         }
         if (!iconFile.type.startsWith("image/")) {
@@ -385,15 +408,17 @@ function initializeNavigation() {
             const safeName = file.name.replace(/[^\\w.-]/g, "_");
             const fileRef = ref(storage, "published/" + user.uid + "/" + itemId + "/package/" + safeName);
             await uploadBytes(fileRef, file, { contentType: file.type || "application/octet-stream" });
-            const downloadUrl = await getDownloadURL(fileRef);
+            const packageStorageUrl = await getDownloadURL(fileRef);
             await addDoc(collection(db, "games"), {
-                name, description, category, type: itemType, downloadUrl,
+                name, description, category, type: itemType,
+                downloadUrl: downloadUrlInput,
+                packageStorageUrl,
                 imageUrl: iconUrl, iconFileName: iconFile.name, fileName: file.name, fileSize: file.size,
                 active: true, published: true, createdBy: user.uid,
                 createdAt: serverTimestamp()
             });
             $("#uploadForm").reset();
-            setStatus($("#uploadStatus"), "Game successfully uploaded and published.");
+            setStatus($("#uploadStatus"), "Successfully published. Download button will open your supplied link.");
             await loadGames();
             renderApps();
         } catch (error) {
