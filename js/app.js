@@ -26,7 +26,7 @@ import {
 import {
     getStorage,
     ref,
-    uploadBytes,
+    uploadBytesResumable,
     getDownloadURL
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-storage.js";
 
@@ -316,6 +316,43 @@ function initializeGameControls() {
     });
 }
 
+
+function uploadFileWithProgress(file, storageRef, label) {
+    return new Promise((resolve, reject) => {
+        const task = uploadBytesResumable(storageRef, file, {
+            contentType: file.type || "application/octet-stream"
+        });
+        let lastTransferred = 0;
+        let idleTimer;
+
+        const resetIdleTimer = () => {
+            window.clearTimeout(idleTimer);
+            idleTimer = window.setTimeout(() => {
+                task.cancel();
+                reject(new Error(label + " upload stalled: no progress for 3 minutes. Check your internet and try again."));
+            }, 180000);
+        };
+
+        resetIdleTimer();
+        task.on("state_changed", (snapshot) => {
+            if (snapshot.bytesTransferred > lastTransferred) {
+                lastTransferred = snapshot.bytesTransferred;
+                resetIdleTimer();
+            }
+            const percent = snapshot.totalBytes
+                ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
+                : 0;
+            setStatus($("#uploadStatus"), label + " uploading: " + percent + "%");
+        }, (error) => {
+            window.clearTimeout(idleTimer);
+            reject(error);
+        }, () => {
+            window.clearTimeout(idleTimer);
+            resolve(task.snapshot.ref);
+        });
+    });
+}
+
 function initializeNavigation() {
     $("#loginOpen")?.addEventListener("click", () => openAuthModal("signin"));
     $("#signupOpen")?.addEventListener("click", () => openAuthModal("signup"));
@@ -399,16 +436,16 @@ function initializeNavigation() {
         setStatus($("#uploadStatus"), "Uploading game icon...");
         try {
             const itemId = crypto.randomUUID();
-            const safeIconName = iconFile.name.replace(/[^\\w.-]/g, "_");
+            const safeIconName = iconFile.name.replace(/[^\w.-]/g, "_");
             const iconRef = ref(storage, "published/" + user.uid + "/" + itemId + "/icon/" + safeIconName);
-            await uploadBytes(iconRef, iconFile, { contentType: iconFile.type });
-            const iconUrl = await getDownloadURL(iconRef);
+            const uploadedIconRef = await uploadFileWithProgress(iconFile, iconRef, "Game icon");
+            const iconUrl = await getDownloadURL(uploadedIconRef);
 
-            setStatus($("#uploadStatus"), "Icon uploaded. Uploading game package...");
-            const safeName = file.name.replace(/[^\\w.-]/g, "_");
+            setStatus($("#uploadStatus"), "Icon uploaded. Preparing game package...");
+            const safeName = file.name.replace(/[^\w.-]/g, "_");
             const fileRef = ref(storage, "published/" + user.uid + "/" + itemId + "/package/" + safeName);
-            await uploadBytes(fileRef, file, { contentType: file.type || "application/octet-stream" });
-            const packageStorageUrl = await getDownloadURL(fileRef);
+            const uploadedPackageRef = await uploadFileWithProgress(file, fileRef, "Game package");
+            const packageStorageUrl = await getDownloadURL(uploadedPackageRef);
             await addDoc(collection(db, "games"), {
                 name, description, category, type: itemType,
                 downloadUrl: downloadUrlInput,
@@ -423,7 +460,12 @@ function initializeNavigation() {
             renderApps();
         } catch (error) {
             console.error("Game upload failed:", error);
-            setStatus($("#uploadStatus"), "Upload failed: " + (error.message || error.code), true);
+            const reason = error.code === "storage/unauthorized"
+                ? "Firebase Storage denied this upload. Check the deployed Storage rules and admin sign-in."
+                : error.code === "storage/canceled"
+                    ? "Upload was canceled or stalled. Check your connection and try again."
+                    : (error.message || error.code || "Unknown error");
+            setStatus($("#uploadStatus"), "Upload failed: " + reason, true);
         } finally {
             button.disabled = false;
         }
