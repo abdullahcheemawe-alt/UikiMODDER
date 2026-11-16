@@ -341,7 +341,7 @@ async function makeUploadOptimizedIcon(file) {
     }
 }
 
-function uploadFileWithProgress(file, storageRef, label) {
+function uploadFileWithProgress(file, storageRef, label, onProgress) {
     return new Promise((resolve, reject) => {
         const task = uploadBytesResumable(storageRef, file, {
             contentType: file.type || "application/octet-stream"
@@ -366,7 +366,8 @@ function uploadFileWithProgress(file, storageRef, label) {
             const percent = snapshot.totalBytes
                 ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
                 : 0;
-            setStatus($("#uploadStatus"), label + " uploading: " + percent + "%");
+            if (onProgress) onProgress(snapshot.bytesTransferred, snapshot.totalBytes, percent);
+            else setStatus($("#uploadStatus"), label + " uploading: " + percent + "%");
         }, (error) => {
             window.clearTimeout(idleTimer);
             reject(error);
@@ -424,11 +425,10 @@ function initializeNavigation() {
         const description = $("#gameDescription")?.value.trim();
         const category = $("#gameCategory")?.value;
         const itemType = $("#itemType")?.value || "game";
-        const downloadUrlInput = $("#gameDownloadUrl")?.value.trim() || "";
         const iconFile = $("#gameIcon")?.files?.[0];
         const file = $("#gameFile")?.files?.[0];
-        if (!name || !description || !category || !downloadUrlInput || !iconFile || !file) {
-            setStatus($("#uploadStatus"), "Game details, download link, icon image aur package file complete karein.", true);
+        if (!name || !description || !category || !iconFile || !file) {
+            setStatus($("#uploadStatus"), "Game details, icon image aur package file complete karein.", true);
             return;
         }
         let parsedDownloadUrl;
@@ -464,21 +464,47 @@ function initializeNavigation() {
             const optimizedIcon = await makeUploadOptimizedIcon(iconFile);
             const safeIconName = optimizedIcon.name.replace(/[^\w.-]/g, "_");
             const iconRef = ref(storage, "published/" + user.uid + "/" + itemId + "/icon/" + safeIconName);
-            const uploadedIconRef = await uploadFileWithProgress(optimizedIcon, iconRef, "Game icon");
-            const iconUrl = await getDownloadURL(uploadedIconRef);
+            const safeName = file.name.replace(/[^\w.-]/g, "_");
+            const fileRef = ref(storage, "published/" + user.uid + "/" + itemId + "/package/" + safeName);
 
-            // The website's Download button uses the supplied MediaFire/direct URL.
-            // Do not upload a second, unused copy of the game package to Firebase.
-            setStatus($("#uploadStatus"), "Icon uploaded. Publishing game details...");
+            // Upload icon and package together to reduce total waiting time.
+            let iconProgress = 0;
+            let packageProgress = 0;
+            const updateCombinedProgress = () => {
+                const total = optimizedIcon.size + file.size;
+                const transferred = iconProgress + packageProgress;
+                const percent = total ? Math.round((transferred / total) * 100) : 0;
+                setStatus($("#uploadStatus"), "Uploading files: " + percent + "%");
+            };
+
+            setStatus($("#uploadStatus"), "Uploading game icon and package...");
+            const [uploadedIconRef, uploadedPackageRef] = await Promise.all([
+                uploadFileWithProgress(optimizedIcon, iconRef, "Game icon", (bytes) => {
+                    iconProgress = bytes;
+                    updateCombinedProgress();
+                }),
+                uploadFileWithProgress(file, fileRef, "Game package", (bytes) => {
+                    packageProgress = bytes;
+                    updateCombinedProgress();
+                })
+            ]);
+
+            setStatus($("#uploadStatus"), "Finalizing download link...");
+            const [iconUrl, packageDownloadUrl] = await Promise.all([
+                getDownloadURL(uploadedIconRef),
+                getDownloadURL(uploadedPackageRef)
+            ]);
+
             await addDoc(collection(db, "games"), {
                 name, description, category, type: itemType,
-                downloadUrl: downloadUrlInput,
+                downloadUrl: packageDownloadUrl,
+                packageStorageUrl: packageDownloadUrl,
                 imageUrl: iconUrl, iconFileName: iconFile.name, fileName: file.name, fileSize: file.size,
                 active: true, published: true, createdBy: user.uid,
                 createdAt: serverTimestamp()
             });
             $("#uploadForm").reset();
-            setStatus($("#uploadStatus"), "Successfully published. Download button will open your supplied link.");
+            setStatus($("#uploadStatus"), "Successfully published! Users can download the file directly from UIKIMODDER.");
             await loadGames();
             renderApps();
         } catch (error) {
