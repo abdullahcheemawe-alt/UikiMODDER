@@ -382,8 +382,6 @@ function initializeAuthentication() {
             const label = $("#accountWelcome");
             if (label) label.textContent = "Welcome back, " + (user.displayName || user.email?.split("@")[0] || "Gamer");
             showStore(false);
-            showProfile(user);
-            showStore(false);
         } else {
             document.documentElement.dataset.auth = "signed-out";
             allGames = [];
