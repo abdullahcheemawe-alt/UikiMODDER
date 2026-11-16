@@ -18,8 +18,17 @@ import {
 import {
     getFirestore,
     collection,
-    getDocs
+    getDocs,
+    addDoc,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
+
+import {
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL
+} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-storage.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCEaZ4ik3gcMScg23FVS99OLKxUnB8LHsY",
@@ -32,7 +41,7 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = getFirestore(app);\nconst storage = getStorage(app);
 
 window.firebaseApp = app;
 window.firebaseAuth = auth;
@@ -132,6 +141,15 @@ function showApps() {
     $("#appsSection")?.classList.remove("hidden");
     $("#bottomNav")?.classList.remove("hidden");
     setActiveBottomTab("apps");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showAdminUpload() {
+    if ((auth.currentUser?.email || "").toLowerCase() !== "abdullahcheemakv@gmail.com") return;
+    hideMainViews();
+    $("#adminSection")?.classList.remove("hidden");
+    $("#bottomNav")?.classList.remove("hidden");
+    setActiveBottomTab("upload");
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
@@ -272,12 +290,61 @@ function initializeNavigation() {
     $("#logoutBtn")?.addEventListener("click", performSignOut);
     $("#profileSignout")?.addEventListener("click", performSignOut);
 
+    $("#uploadForm")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const user = auth.currentUser;
+        if ((user?.email || "").toLowerCase() !== "abdullahcheemakv@gmail.com") {
+            setStatus($("#uploadStatus"), "Admin permission required.", true);
+            return;
+        }
+
+        const name = $("#gameName")?.value.trim();
+        const description = $("#gameDescription")?.value.trim();
+        const category = $("#gameCategory")?.value;
+        const iconUrl = $("#gameIcon")?.value.trim() || "";
+        const file = $("#gameFile")?.files?.[0];
+        if (!name || !description || !category || !file) {
+            setStatus($("#uploadStatus"), "Please complete all required fields.", true);
+            return;
+        }
+        if (file.size > 500 * 1024 * 1024) {
+            setStatus($("#uploadStatus"), "Package must be 500 MB or smaller.", true);
+            return;
+        }
+
+        const button = $("#uploadBtn");
+        button.disabled = true;
+        setStatus($("#uploadStatus"), "Uploading package...");
+        try {
+            const itemId = crypto.randomUUID();
+            const safeName = file.name.replace(/[^\\w.-]/g, "_");
+            const fileRef = ref(storage, "published/" + user.uid + "/" + itemId + "/package/" + safeName);
+            await uploadBytes(fileRef, file, { contentType: file.type || "application/octet-stream" });
+            const downloadUrl = await getDownloadURL(fileRef);
+            await addDoc(collection(db, "games"), {
+                name, description, category, type: "game", downloadUrl,
+                imageUrl: iconUrl, fileName: file.name, fileSize: file.size,
+                active: true, published: true, createdBy: user.uid,
+                createdAt: serverTimestamp()
+            });
+            $("#uploadForm").reset();
+            setStatus($("#uploadStatus"), "Game successfully uploaded and published.");
+            await loadGames();
+        } catch (error) {
+            console.error("Game upload failed:", error);
+            setStatus($("#uploadStatus"), "Upload failed: " + (error.message || error.code), true);
+        } finally {
+            button.disabled = false;
+        }
+    });
+
     document.querySelectorAll(".bottom-nav-item").forEach((button) => {
         button.addEventListener("click", () => {
             const view = button.dataset.view;
             if (view === "games") showStore();
             if (view === "apps") showApps();
             if (view === "profile") showProfile();
+            if (view === "upload") showAdminUpload();
             if (view === "search") {
                 showStore();
                 window.setTimeout(() => $("#searchInput")?.focus(), 250);
@@ -375,10 +442,10 @@ function initializeAuthentication() {
         $("#logoutBtn")?.classList.toggle("hidden", true);
         $("#bottomNav")?.classList.toggle("hidden", !loggedIn);
         $("#accountWelcome")?.classList.toggle("hidden", !loggedIn);
+        const isSuperAdmin = (user?.email || "").toLowerCase() === "abdullahcheemakv@gmail.com";
+        $("#adminUploadNav")?.classList.toggle("hidden", !isSuperAdmin);
 
         if (user) {
-            if ((user.email || "").toLowerCase() === "abdullahcheemakv@gmail.com" && !location.pathname.endsWith("/admin.html")) { location.replace("./admin.html"); return; }
-            if ((user.email || "").toLowerCase() !== "abdullahcheemakv@gmail.com" && location.pathname.endsWith("/admin.html")) { location.replace("./index.html"); return; }
             console.log("Signed in:", user.email);
             document.documentElement.dataset.auth = "signed-in";
             const label = $("#accountWelcome");
