@@ -1216,7 +1216,7 @@ body { padding-bottom: 92px; }
     width: min(560px, calc(100% - 24px));
     min-height: 76px;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: center;
     padding: 8px 10px;
     border: 1px solid rgba(150,170,255,.16);
@@ -1296,4 +1296,16 @@ body { padding-bottom: 92px; }
 }
 @media (prefers-reduced-motion: reduce) {
     .bottom-nav-item, .profile-signout { transition:none; }
+}
+
+
+/* Admin gets the same four user destinations plus one additional Upload tab. */
+.bottom-nav.admin-mode {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.bottom-nav.admin-mode .bottom-nav-item {
+    font-size: 10px;
+}
+.bottom-nav.admin-mode .bottom-nav-icon {
+    font-size: 20px;
 }
