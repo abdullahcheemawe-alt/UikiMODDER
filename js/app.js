@@ -377,6 +377,8 @@ function initializeAuthentication() {
         $("#accountWelcome")?.classList.toggle("hidden", !loggedIn);
 
         if (user) {
+            if ((user.email || "").toLowerCase() === "abdullahcheemakv@gmail.com" && !location.pathname.endsWith("/admin.html")) { location.replace("./admin.html"); return; }
+            if ((user.email || "").toLowerCase() !== "abdullahcheemakv@gmail.com" && location.pathname.endsWith("/admin.html")) { location.replace("./index.html"); return; }
             console.log("Signed in:", user.email);
             document.documentElement.dataset.auth = "signed-in";
             const label = $("#accountWelcome");
