@@ -136,7 +136,38 @@ function showApps() {
     $("#appsSection")?.classList.remove("hidden");
     $("#bottomNav")?.classList.remove("hidden");
     setActiveBottomTab("apps");
+    renderApps();
     window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderApps() {
+    const container = $("#appsContainer");
+    const empty = $("#appsEmptyState");
+    if (!container || !empty) return;
+
+    const apps = allGames.filter((item) =>
+        String(item.type || "game").toLowerCase() === "app"
+        && item.active !== false && item.published !== false
+    );
+
+    container.innerHTML = apps.map((item) => {
+        const name = item.name || item.title || "Untitled App";
+        const description = item.description || "Explore this app.";
+        const image = item.imageUrl || item.iconUrl || item.thumbnail || item.image || "";
+        const download = item.downloadUrl || item.fileUrl || item.url || item.downloadURL || "";
+        const art = image
+            ? '<img src="' + escapeHTML(image) + '" alt="' + escapeHTML(name) + '" loading="lazy" onerror="this.style.display=\'none\'">'
+            : '<span aria-hidden="true">▦</span>';
+        const action = download
+            ? '<a class="download-link" href="' + escapeHTML(download) + '" target="_blank" rel="noopener noreferrer">GET APP ↗</a>'
+            : '<span class="category">Coming Soon</span>';
+        return '<article class="game-card"><div class="game-art">' + art + '</div><div class="game-info"><h3>'
+            + escapeHTML(name) + '</h3><p>' + escapeHTML(description)
+            + '</p><div class="game-bottom"><span class="category">App</span>' + action
+            + '</div></div></article>';
+    }).join("");
+
+    empty.classList.toggle("hidden", apps.length !== 0);
 }
 
 function showAdminUpload() {
@@ -230,6 +261,7 @@ async function loadGames() {
         allGames = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
             .filter((game) => game.active !== false && game.published !== false);
         renderGames();
+        renderApps();
     } catch (error) {
         console.error("Could not load games from Firestore:", error);
         container.innerHTML = "";
@@ -296,6 +328,7 @@ function initializeNavigation() {
         const name = $("#gameName")?.value.trim();
         const description = $("#gameDescription")?.value.trim();
         const category = $("#gameCategory")?.value;
+        const itemType = $("#itemType")?.value || "game";
         const iconUrl = $("#gameIcon")?.value.trim() || "";
         const file = $("#gameFile")?.files?.[0];
         if (!name || !description || !category || !file) {
@@ -317,7 +350,7 @@ function initializeNavigation() {
             await uploadBytes(fileRef, file, { contentType: file.type || "application/octet-stream" });
             const downloadUrl = await getDownloadURL(fileRef);
             await addDoc(collection(db, "games"), {
-                name, description, category, type: "game", downloadUrl,
+                name, description, category, type: itemType, downloadUrl,
                 imageUrl: iconUrl, fileName: file.name, fileSize: file.size,
                 active: true, published: true, createdBy: user.uid,
                 createdAt: serverTimestamp()
@@ -325,6 +358,7 @@ function initializeNavigation() {
             $("#uploadForm").reset();
             setStatus($("#uploadStatus"), "Game successfully uploaded and published.");
             await loadGames();
+            renderApps();
         } catch (error) {
             console.error("Game upload failed:", error);
             setStatus($("#uploadStatus"), "Upload failed: " + (error.message || error.code), true);
