@@ -1070,3 +1070,46 @@ button:disabled {
         transition-duration: 0.01ms !important;
     }
 }
+
+}
+
+/* =========================================
+   AUTH MODAL - MOBILE SCROLL FIX
+========================================= */
+.auth-modal {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-right: 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding-left: 16px;
+}
+
+.auth-box {
+    flex: 0 0 auto;
+    margin: auto 0;
+    max-height: none;
+}
+
+@media (max-width: 650px) {
+    .auth-modal {
+        align-items: flex-start;
+        padding: 14px 12px max(20px, env(safe-area-inset-bottom));
+    }
+
+    .auth-box {
+        width: 100%;
+        max-width: 430px;
+        padding: 30px 22px;
+        margin: 0 auto;
+    }
+
+    .auth-box h2 {
+        font-size: clamp(27px, 7vw, 31px);
+    }
+}
