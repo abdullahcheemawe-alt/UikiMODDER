@@ -1357,3 +1357,9 @@ body { padding-bottom: 92px; }
     object-fit: cover;
     border-radius: 10px;
 }
+
+
+/* External download URL field */
+#gameDownloadUrl {
+    width: 100%;
+}
