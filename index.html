@@ -53,6 +53,8 @@
                 Create Account
             </button>
 
+            <span id="accountWelcome" class="account-welcome hidden" aria-live="polite"></span>
+
             <button id="logoutBtn" class="logout-btn hidden">
                 Sign Out
             </button>
@@ -200,14 +202,14 @@
         </div>
 
 
-        <div id="gamesContainer" class="games-grid">
+        <div id="gamesContainer" class="games-grid" aria-live="polite">
 
             <!-- Games will load through JavaScript -->
 
         </div>
 
 
-        <div id="emptyState" class="empty-state hidden">
+        <div id="emptyState" class="empty-state hidden" role="status">
 
             <div>🎮</div>
 
