@@ -319,6 +319,27 @@ function initializeNavigation() {
     $("#logoutBtn")?.addEventListener("click", performSignOut);
     $("#profileSignout")?.addEventListener("click", performSignOut);
 
+    $("#gameIcon")?.addEventListener("change", (event) => {
+        const selected = event.currentTarget.files?.[0];
+        const preview = $("#gameIconPreview");
+        const image = $("#gameIconPreviewImage");
+        const fileName = $("#gameIconFileName");
+        if (!selected || !selected.type.startsWith("image/")) {
+            preview?.classList.add("hidden");
+            if (event.currentTarget.files?.length) event.currentTarget.value = "";
+            return;
+        }
+        if (selected.size > 10 * 1024 * 1024) {
+            setStatus($("#uploadStatus"), "Game icon image 10 MB ya us se chhoti honi chahiye.", true);
+            event.currentTarget.value = "";
+            preview?.classList.add("hidden");
+            return;
+        }
+        if (image) image.src = URL.createObjectURL(selected);
+        if (fileName) fileName.textContent = selected.name;
+        preview?.classList.remove("hidden");
+    });
+
     $("#uploadForm")?.addEventListener("submit", async (event) => {
         event.preventDefault();
         const user = auth.currentUser;
@@ -331,10 +352,18 @@ function initializeNavigation() {
         const description = $("#gameDescription")?.value.trim();
         const category = $("#gameCategory")?.value;
         const itemType = $("#itemType")?.value || "game";
-        const iconUrl = $("#gameIcon")?.value.trim() || "";
+        const iconFile = $("#gameIcon")?.files?.[0];
         const file = $("#gameFile")?.files?.[0];
-        if (!name || !description || !category || !file) {
-            setStatus($("#uploadStatus"), "Please complete all required fields.", true);
+        if (!name || !description || !category || !iconFile || !file) {
+            setStatus($("#uploadStatus"), "Game details, icon image aur package file select karein.", true);
+            return;
+        }
+        if (!iconFile.type.startsWith("image/")) {
+            setStatus($("#uploadStatus"), "Game Icon ke liye gallery se image file select karein.", true);
+            return;
+        }
+        if (iconFile.size > 10 * 1024 * 1024) {
+            setStatus($("#uploadStatus"), "Game icon image 10 MB ya us se chhoti honi chahiye.", true);
             return;
         }
         if (file.size > 500 * 1024 * 1024) {
@@ -344,16 +373,22 @@ function initializeNavigation() {
 
         const button = $("#uploadBtn");
         button.disabled = true;
-        setStatus($("#uploadStatus"), "Uploading package...");
+        setStatus($("#uploadStatus"), "Uploading game icon...");
         try {
             const itemId = crypto.randomUUID();
-            const safeName = file.name.replace(/[^\w.-]/g, "_");
+            const safeIconName = iconFile.name.replace(/[^\\w.-]/g, "_");
+            const iconRef = ref(storage, "published/" + user.uid + "/" + itemId + "/icon/" + safeIconName);
+            await uploadBytes(iconRef, iconFile, { contentType: iconFile.type });
+            const iconUrl = await getDownloadURL(iconRef);
+
+            setStatus($("#uploadStatus"), "Icon uploaded. Uploading game package...");
+            const safeName = file.name.replace(/[^\\w.-]/g, "_");
             const fileRef = ref(storage, "published/" + user.uid + "/" + itemId + "/package/" + safeName);
             await uploadBytes(fileRef, file, { contentType: file.type || "application/octet-stream" });
             const downloadUrl = await getDownloadURL(fileRef);
             await addDoc(collection(db, "games"), {
                 name, description, category, type: itemType, downloadUrl,
-                imageUrl: iconUrl, fileName: file.name, fileSize: file.size,
+                imageUrl: iconUrl, iconFileName: iconFile.name, fileName: file.name, fileSize: file.size,
                 active: true, published: true, createdBy: user.uid,
                 createdAt: serverTimestamp()
             });
