@@ -1113,3 +1113,88 @@ button:disabled {
         font-size: clamp(27px, 7vw, 31px);
     }
 }
+
+
+/* =========================================
+   POST-LOGIN STORE + PREMIUM LOADING STATES
+========================================= */
+.account-welcome {
+    max-width: 190px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #c7d5f5;
+    font-size: 12px;
+    padding: 10px 13px;
+    border: 1px solid rgba(0,245,255,.2);
+    border-radius: 10px;
+    background: rgba(0,245,255,.06);
+}
+.games-loading {
+    grid-column: 1 / -1;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    color: var(--muted);
+    font-size: 13px;
+}
+.loading-spinner, .button-spinner {
+    display: inline-block;
+    width: 34px;
+    height: 34px;
+    border: 3px solid rgba(0,245,255,.16);
+    border-top-color: var(--cyan);
+    border-right-color: var(--purple);
+    border-radius: 50%;
+    animation: uikiSpin .8s linear infinite;
+}
+.button-spinner {
+    width: 15px;
+    height: 15px;
+    border-width: 2px;
+    vertical-align: -3px;
+    margin-right: 9px;
+    border-color: rgba(5,12,35,.2);
+    border-top-color: #071020;
+}
+.auth-submit[aria-busy="true"] {
+    cursor: progress;
+    opacity: .88;
+    transform: none;
+}
+.status-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #a8c9ff;
+}
+.status-loading::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 12px var(--cyan);
+    animation: uikiPulse 1s ease-in-out infinite;
+}
+.empty-state {
+    margin-top: 22px;
+    border: 1px dashed rgba(0,245,255,.22);
+    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(17,22,49,.8), rgba(9,13,31,.8));
+}
+.empty-state > div {
+    filter: drop-shadow(0 0 18px rgba(0,245,255,.25));
+}
+@keyframes uikiSpin { to { transform: rotate(360deg); } }
+@keyframes uikiPulse { 50% { opacity: .35; transform: scale(.75); } }
+@media (max-width: 650px) {
+    .account-welcome { order: 3; max-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .loading-spinner, .button-spinner, .status-loading::before { animation: none; }
+}
