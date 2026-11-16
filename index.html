@@ -17,7 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="style.css?v=9">
+    <link rel="stylesheet" href="style.css?v=10">
 </head>
 
 <body>
@@ -299,14 +299,21 @@
 
 
                 <label for="gameIcon">
-                    Game Icon URL
+                    Game Icon
                 </label>
 
                 <input
-                    type="url"
+                    type="file"
                     id="gameIcon"
-                    placeholder="Paste image URL"
+                    accept="image/*"
+                    required
+                    aria-describedby="gameIconHelp"
                 >
+                <small id="gameIconHelp" class="upload-help">Choose File par tap karein aur apni gallery se game icon select karein. JPG, PNG ya WEBP; maximum 10 MB.</small>
+                <div id="gameIconPreview" class="upload-image-preview hidden">
+                    <img id="gameIconPreviewImage" alt="Selected game icon preview">
+                    <span id="gameIconFileName"></span>
+                </div>
 
 
                 <label for="gameFile">
@@ -502,6 +509,6 @@
     <!-- JAVASCRIPT -->
     
 
-    <script type="module" src="./js/app.js?v=9"></script>
+    <script type="module" src="./js/app.js?v=10"></script>
 </body>
 </html>
