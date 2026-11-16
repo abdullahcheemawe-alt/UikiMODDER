@@ -214,7 +214,9 @@ function renderGames() {
         const name = String(game.name || game.title || game.gameName || "").toLowerCase();
         const description = String(game.description || "").toLowerCase();
         const category = String(game.category || "Other");
-        return (activeCategory === "All" || category.toLowerCase() === activeCategory.toLowerCase())
+        const isGame = String(game.type || "game").toLowerCase() === "game";
+        return isGame
+            && (activeCategory === "All" || category.toLowerCase() === activeCategory.toLowerCase())
             && (!term || name.includes(term) || description.includes(term));
     });
 
@@ -345,7 +347,7 @@ function initializeNavigation() {
         setStatus($("#uploadStatus"), "Uploading package...");
         try {
             const itemId = crypto.randomUUID();
-            const safeName = file.name.replace(/[^\\w.-]/g, "_");
+            const safeName = file.name.replace(/[^\w.-]/g, "_");
             const fileRef = ref(storage, "published/" + user.uid + "/" + itemId + "/package/" + safeName);
             await uploadBytes(fileRef, file, { contentType: file.type || "application/octet-stream" });
             const downloadUrl = await getDownloadURL(fileRef);
