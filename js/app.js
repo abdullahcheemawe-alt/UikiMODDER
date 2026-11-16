@@ -41,7 +41,8 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);\nconst storage = getStorage(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
 window.firebaseApp = app;
 window.firebaseAuth = auth;
