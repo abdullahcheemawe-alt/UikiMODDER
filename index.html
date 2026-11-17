@@ -298,7 +298,18 @@
                 </select>
 
 
-                <small class="upload-help">Select the game package. It will be uploaded to UIKIMODDER and users can download it directly from the website.</small>
+                <label for="gameDownloadUrl">
+                    External Download Link (ZIP, RAR, 7Z, APK, XAPK, and other files)
+                </label>
+                <input
+                    type="url"
+                    id="gameDownloadUrl"
+                    placeholder="https://example.com/game.zip"
+                    inputmode="url"
+                    autocomplete="url"
+                    aria-describedby="gameDownloadHelp"
+                >
+                <small id="gameDownloadHelp" class="upload-help">Paste a direct or hosted download URL. Use either this link or select a package file below. Only HTTP and HTTPS links are accepted.</small>
 
                 <label for="gameIcon">
                     Game Icon
@@ -319,14 +330,15 @@
 
 
                 <label for="gameFile">
-                    Game Package
+                    Or Upload Package File (optional)
                 </label>
 
                 <input
                     type="file"
                     id="gameFile"
-                    required
+                    aria-describedby="gameFileHelp"
                 >
+                <small id="gameFileHelp" class="upload-help">Supported formats include ZIP, RAR, 7Z, APK, XAPK, EXE, PDF, and other file types. Maximum 500 MB.</small>
 
 
                 <button
