@@ -2297,3 +2297,83 @@ body { padding-bottom: 92px; }
     .logo { animation: none !important; }
     .logo-icon { animation: none !important; }
 }
+
+
+/* Compact, static UIKIMODDER top-line branding */
+.navbar {
+    min-height: 62px;
+    padding: 6px clamp(12px, 3.5vw, 42px);
+    background: rgba(7, 9, 27, .96);
+    box-shadow: 0 5px 16px rgba(0,0,0,.12);
+}
+.navbar::after { left: 12%; right: 12%; opacity: .42; }
+.logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    padding: 5px 9px 5px 6px;
+    border: 1px solid rgba(125,155,255,.10);
+    border-radius: 10px;
+    background: rgba(17,31,63,.38);
+    box-shadow: none;
+    animation: none !important;
+}
+.logo:hover {
+    transform: none;
+    border-color: rgba(0,231,255,.18);
+    box-shadow: none;
+}
+.logo-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 25px;
+    height: 25px;
+    border-radius: 7px;
+    margin: 0;
+    font-size: 15px;
+    box-shadow: 0 0 10px rgba(0,220,255,.12);
+    animation: none !important;
+}
+.logo-wordmark {
+    display: inline-block;
+    font-size: 16px;
+    line-height: 1;
+    letter-spacing: .45px;
+    font-weight: 900;
+    text-shadow: none;
+}
+@media (max-width: 650px) {
+    .navbar {
+        min-height: 58px;
+        padding: 5px 12px;
+        justify-content: space-between;
+        gap: 6px;
+    }
+    .logo {
+        gap: 7px;
+        padding: 4px 7px 4px 5px;
+        border-radius: 9px;
+    }
+    .logo-icon {
+        width: 23px;
+        height: 23px;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+    .logo-wordmark {
+        font-size: clamp(15px, 4.1vw, 17px);
+        letter-spacing: .25px;
+    }
+}
+/* Paint game/app cards immediately; never hide them behind entrance animations. */
+.game-card,
+.game-list-card {
+    opacity: 1 !important;
+    animation: none !important;
+    transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.game-art img {
+    opacity: 1;
+    animation: none !important;
+}
