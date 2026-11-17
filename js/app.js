@@ -596,7 +596,7 @@ function initializeNavigation() {
         });
     });
 
-    document.querySelectorAll('.nav-links a[href="#discover"], .nav-links a[href="#categories"]').forEach((link) => {
+    document.querySelectorAll('.nav-links a[href="#storeSection"], .nav-links a[href="#categories"]').forEach((link) => {
         link.addEventListener("click", (event) => {
             event.preventDefault();
             showStore();
