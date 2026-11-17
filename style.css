@@ -747,6 +747,41 @@ button {
     min-height: 15px;
 }
 
+.upload-progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid rgba(0, 245, 255, 0.22);
+    border-radius: 10px;
+    background: rgba(0, 245, 255, 0.05);
+}
+
+.upload-progress-track {
+    flex: 1;
+    height: 10px;
+    overflow: hidden;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.upload-progress-fill {
+    width: 0%;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--gradient);
+    transition: width 180ms ease;
+}
+
+.upload-progress-text {
+    min-width: 42px;
+    color: var(--cyan);
+    font-size: 12px;
+    font-weight: 800;
+    text-align: right;
+}
+
 /* =========================================
    AUTH MODAL
 ========================================= */
