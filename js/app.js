@@ -23,7 +23,7 @@ import {
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
-import { supabase, SUPABASE_PUBLISHABLE_KEY } from "./supabase.js?v=2";
+import { supabase, SUPABASE_PUBLISHABLE_KEY } from "./supabase.js?v=3";
 
 
 const firebaseConfig = {
@@ -361,24 +361,59 @@ async function createSignedUploadBatch(files) {
     return data;
 }
 
-async function uploadFileWithProgress(file, signedUpload, label, onProgress) {
-    // Use Supabase's browser-native signed upload API. Passing the original
-    // File/Blob avoids the Node Buffer/Readable incompatibility from the TUS
-    // client bundle on some mobile browsers.
-    const { data, error } = await supabase.storage
-        .from("uikimodder-files")
-        .uploadToSignedUrl(signedUpload.path, signedUpload.token, file, {
-            contentType: file.type || "application/octet-stream",
-            cacheControl: "3600",
-            upsert: false
+function uploadFileWithProgress(file, signedUpload, label, onProgress) {
+    return new Promise((resolve, reject) => {
+        // Use the documented Storage REST signed-upload endpoint directly.
+        // This avoids SDK FileBody/Buffer adapters that can fail on Android.
+        const encodedPath = signedUpload.path.split("/").map(encodeURIComponent).join("/");
+        const endpoint = "https://netztjoroixlbqntbnxi.supabase.co/storage/v1/object/upload/sign/" +
+            "uikimodder-files/" + encodedPath +
+            "?token=" + encodeURIComponent(signedUpload.token);
+
+        const request = new XMLHttpRequest();
+        request.open("PUT", endpoint, true);
+        request.setRequestHeader("apikey", SUPABASE_PUBLISHABLE_KEY);
+        request.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+        request.setRequestHeader("x-upsert", "false");
+        request.timeout = 180000;
+
+        request.upload.addEventListener("progress", (event) => {
+            if (onProgress && event.lengthComputable) {
+                onProgress(event.loaded, event.total);
+            }
         });
 
-    if (error) {
-        throw new Error(label + " upload failed: " + (error.message || "Supabase Storage rejected the file."));
-    }
+        request.addEventListener("load", () => {
+            if (request.status >= 200 && request.status < 300) {
+                if (onProgress) onProgress(file.size, file.size);
+                resolve(signedUpload.publicUrl);
+                return;
+            }
 
-    if (onProgress) onProgress(file.size, file.size);
-    return signedUpload.publicUrl;
+            let detail = request.responseText || "Storage rejected the upload.";
+            try {
+                const payload = JSON.parse(detail);
+                detail = payload.message || payload.error || payload.msg || detail;
+            } catch {
+                // Keep the plain-text server response.
+            }
+            reject(new Error(label + " upload failed (" + request.status + "): " + detail));
+        });
+
+        request.addEventListener("error", () => {
+            reject(new Error(label + " upload failed: Network or CORS error while sending the file."));
+        });
+        request.addEventListener("timeout", () => {
+            reject(new Error(label + " upload failed: Upload timed out. Check the connection and try again."));
+        });
+        request.addEventListener("abort", () => {
+            reject(new Error(label + " upload failed: Upload was cancelled."));
+        });
+
+        // Send the actual browser File bytes; do not convert to Buffer, Readable,
+        // FormData, or a Node stream.
+        request.send(file);
+    });
 }
 
 async function cleanupSupabaseUploads(paths) {
