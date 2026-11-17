@@ -39,7 +39,7 @@
 
         <nav class="nav-links">
             <a href="#home">Home</a>
-            <a href="#discover">Discover</a>
+            <a href="#storeSection">Discover</a>
             <a href="#categories">Categories</a>
         </nav>
 
@@ -273,6 +273,7 @@
 
                 <label for="itemType">Content Type</label>
                 <select id="itemType" required>
+                    <option value="">Select content type</option>
                     <option value="game">Game</option>
                     <option value="app">App</option>
                 </select>
@@ -324,7 +325,7 @@
                 >
                 <small id="gameIconHelp" class="upload-help">Tap Choose File to select a game icon from your device. JPG, PNG, or WEBP; maximum 10 MB.</small>
                 <div id="gameIconPreview" class="upload-image-preview hidden">
-                    <img id="gameIconPreviewImage" alt="Selected game icon preview">
+                    <img id="gameIconPreviewImage" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Selected game icon preview">
                     <span id="gameIconFileName"></span>
                 </div>
 
@@ -338,7 +339,7 @@
                     id="gameFile"
                     aria-describedby="gameFileHelp"
                 >
-                <small id="gameFileHelp" class="upload-help">Supported formats include ZIP, RAR, 7Z, APK, XAPK, EXE, PDF, and other file types. Maximum 500 MB.</small>
+                <small id="gameFileHelp" class="upload-help">Supported formats include ZIP, RAR, 7Z, APK, XAPK, EXE, PDF, and other file types. Maximum 50 MB on the current Supabase plan.</small>
 
 
                 <button
@@ -477,7 +478,7 @@
 
 
     <!-- APPS VIEW -->
-    <main id="appsSection" class="secondary-view hidden">
+    <section id="appsSection" class="secondary-view hidden">
         <div class="view-heading">
             <span class="section-label">YOUR DIGITAL TOOLKIT</span>
             <h2>Discover <span class="gradient-text">Apps.</span></h2>
@@ -489,10 +490,10 @@
             <h3>No Apps Available Yet</h3>
             <p>New apps will appear here when the admin publishes them.</p>
         </div>
-    </main>
+    </section>
 
     <!-- PROFILE VIEW -->
-    <main id="profileSection" class="secondary-view hidden">
+    <section id="profileSection" class="secondary-view hidden">
         <div class="view-heading">
             <span class="section-label">PLAYER SPACE</span>
             <h2>Your <span class="gradient-text">Profile.</span></h2>
@@ -506,7 +507,7 @@
             <div class="profile-detail"><span>Account status</span><strong><i class="online-dot"></i> Active</strong></div>
             <button id="profileSignout" class="profile-signout" type="button">↗ &nbsp; Sign Out</button>
         </section>
-    </main>
+    </section>
 
     <!-- MOBILE / APP-STYLE BOTTOM NAVIGATION -->
     <nav id="bottomNav" class="bottom-nav hidden" aria-label="Main navigation">
