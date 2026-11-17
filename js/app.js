@@ -38,6 +38,7 @@ const firebaseConfig = {
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+let pendingGameRecord = null;
 
 window.firebaseApp = app;
 window.firebaseAuth = auth;
@@ -111,6 +112,36 @@ function escapeHTML(value = "") {
 }
 
 function setActiveBottomTab(view) {
+    $("#retryPublishBtn")?.addEventListener("click", async () => {
+        if (!pendingGameRecord) {
+            setStatus($("#uploadStatus"), "There is no pending game record to publish.", true);
+            return;
+        }
+        const retryButton = $("#retryPublishBtn");
+        retryButton.disabled = true;
+        retryButton.textContent = "SAVING...";
+        try {
+            await addDoc(collection(db, "games"), pendingGameRecord);
+            pendingGameRecord = null;
+            retryButton.classList.add("hidden");
+            $("#uploadForm")?.reset();
+            $("#gameIconPreview")?.classList.add("hidden");
+            setStatus($("#uploadStatus"), "Published successfully! Your game is now in the UIKIMODDER library.");
+            await loadGames();
+            renderApps();
+        } catch (error) {
+            console.error("Retry Firestore publish failed:", error);
+            setStatus($("#uploadStatus"),
+                "Firestore still rejected the record (" + (error.code || error.message) +
+                "). Check that the latest Firestore rules are published.",
+                true
+            );
+        } finally {
+            retryButton.disabled = false;
+            retryButton.textContent = "RETRY PUBLISH";
+        }
+    });
+
     document.querySelectorAll(".bottom-nav-item").forEach((button) => {
         button.classList.toggle("active", button.dataset.view === view || (view === "search" && button.dataset.view === "games"));
     });
@@ -508,6 +539,7 @@ function initializeNavigation() {
         if ($("#uploadProgressText")) $("#uploadProgressText").textContent = "0%";
         setStatus($("#uploadStatus"), "Preparing your game files...");
         let createdPaths = [];
+        let filesUploaded = false;
         try {
             const optimizedIcon = await makeUploadOptimizedIcon(iconFile);
             const uploadFiles = [{ kind: "icon", name: optimizedIcon.name, size: optimizedIcon.size }];
@@ -553,15 +585,16 @@ function initializeNavigation() {
             const uploadedUrls = await Promise.all(uploadTasks);
             const iconUrl = uploadedUrls[0];
             const packageDownloadUrl = uploadedUrls[1];
+            filesUploaded = true;
 
             if (progressFill) progressFill.style.width = "100%";
             if (progressText) progressText.textContent = "100%";
             setStatus($("#uploadStatus"), "Saving game details to the library...");
             const itemId = signedBatch.itemId;
-            await addDoc(collection(db, "games"), {
+            pendingGameRecord = {
                 name, description, category, type: itemType,
                 downloadUrl: packageDownloadUrl,
-                packageStorageUrl: file ? packageDownloadUrl : "",
+                packageStorageUrl: packageDownloadUrl,
                 storageProvider: "supabase",
                 storageBucket: "uikimodder-files",
                 storagePath: packageUpload.path,
@@ -571,7 +604,10 @@ function initializeNavigation() {
                 fileSize: file.size,
                 active: true, published: true, createdBy: user.uid,
                 createdAt: serverTimestamp()
-            });
+            };
+            await addDoc(collection(db, "games"), pendingGameRecord);
+            pendingGameRecord = null;
+            $("#retryPublishBtn")?.classList.add("hidden");
             $("#uploadForm").reset();
             $("#gameIconPreview")?.classList.add("hidden");
             if ($("#uploadProgressFill")) $("#uploadProgressFill").style.width = "100%";
@@ -580,10 +616,22 @@ function initializeNavigation() {
             await loadGames();
             renderApps();
         } catch (error) {
-            await cleanupSupabaseUploads(createdPaths);
             console.error("Game upload failed:", error);
             const reason = error.message || error.code || "Unknown error";
-            setStatus($("#uploadStatus"), "Upload failed: " + reason, true);
+            if (pendingGameRecord && filesUploaded) {
+                // Storage upload succeeded. Keep the objects and allow a metadata-only retry
+                // after the Firebase Firestore rules have been published.
+                $("#retryPublishBtn")?.classList.remove("hidden");
+                setStatus($("#uploadStatus"),
+                    "Files uploaded successfully, but Firestore blocked the game record (" +
+                    (error.code || reason) +
+                    "). Publish the latest firestore.rules, then tap RETRY PUBLISH. Your files are محفوظ and will not be uploaded again.",
+                    true
+                );
+            } else {
+                await cleanupSupabaseUploads(createdPaths);
+                setStatus($("#uploadStatus"), "Upload failed: " + reason, true);
+            }
         } finally {
             button.disabled = false;
             button.removeAttribute("aria-busy");
