@@ -24,7 +24,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
 import { supabase, SUPABASE_PUBLISHABLE_KEY } from "./supabase.js?v=2";
-import { Upload as TusUpload } from "https://esm.sh/tus-js-client@4.3.1";
+
 
 const firebaseConfig = {
     apiKey: "AIzaSyCEaZ4ik3gcMScg23FVS99OLKxUnB8LHsY",
@@ -361,39 +361,24 @@ async function createSignedUploadBatch(files) {
     return data;
 }
 
-function uploadFileWithProgress(file, signedUpload, label, onProgress) {
-    return new Promise((resolve, reject) => {
-        const upload = new TusUpload(file, {
-            endpoint: "https://netztjoroixlbqntbnxi.storage.supabase.co/storage/v1/upload/resumable",
-            retryDelays: [0, 1000, 3000, 5000, 10000],
-            headers: {
-                apikey: SUPABASE_PUBLISHABLE_KEY,
-                "x-signature": signedUpload.token
-            },
-            uploadDataDuringCreation: true,
-            removeFingerprintOnSuccess: true,
-            chunkSize: 6 * 1024 * 1024,
-            metadata: {
-                bucketName: "uikimodder-files",
-                objectName: signedUpload.path,
-                contentType: file.type || "application/octet-stream",
-                cacheControl: "3600"
-            },
-            onError(error) {
-                reject(new Error(label + " upload failed: " + (error?.message || "Storage rejected the upload.")));
-            },
-            onProgress(bytesUploaded, bytesTotal) {
-                if (onProgress) onProgress(bytesUploaded, bytesTotal);
-            },
-            onSuccess() {
-                resolve(signedUpload.publicUrl);
-            }
+async function uploadFileWithProgress(file, signedUpload, label, onProgress) {
+    // Use Supabase's browser-native signed upload API. Passing the original
+    // File/Blob avoids the Node Buffer/Readable incompatibility from the TUS
+    // client bundle on some mobile browsers.
+    const { data, error } = await supabase.storage
+        .from("uikimodder-files")
+        .uploadToSignedUrl(signedUpload.path, signedUpload.token, file, {
+            contentType: file.type || "application/octet-stream",
+            cacheControl: "3600",
+            upsert: false
         });
-        upload.findPreviousUploads().then((previous) => {
-            if (previous.length) upload.resumeFromPreviousUpload(previous[0]);
-            upload.start();
-        }).catch(reject);
-    });
+
+    if (error) {
+        throw new Error(label + " upload failed: " + (error.message || "Supabase Storage rejected the file."));
+    }
+
+    if (onProgress) onProgress(file.size, file.size);
+    return signedUpload.publicUrl;
 }
 
 async function cleanupSupabaseUploads(paths) {
