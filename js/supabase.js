@@ -1,58 +1,20 @@
 "use strict";
 
-// ========================================
-// SUPABASE SDK
-// ========================================
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
-import {
-    createClient
-} from "https://esm.sh/@supabase/supabase-js@2";
+export const SUPABASE_URL = "https://netztjoroixlbqntbnxi.supabase.co";
+export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_0-_r-gxKmsraV_ew5uXG_W_UdkuX7tv";
+export const SUPABASE_BUCKET = "uikimodder-files";
 
-// ========================================
-// SUPABASE CONFIGURATION
-// ========================================
-
-const SUPABASE_URL =
-    "https://netztjoroixlbqntbnxi.supabase.co";
-
-// Apni Dashboard wali exact Publishable Key paste karo
-const SUPABASE_PUBLISHABLE_KEY =
-    "PASTE_YOUR_EXACT_PUBLISHABLE_KEY_HERE";
-
-// ========================================
-// FIREBASE AUTHENTICATION CONNECTION
-// ========================================
-
-export const supabase = createClient(
-
-    SUPABASE_URL,
-
-    SUPABASE_PUBLISHABLE_KEY,
-
-    {
-
-        accessToken: async () => {
-
-            const user = window.firebaseAuth?.currentUser;
-
-            if (!user) {
-
-                return null;
-
-            }
-
-            return await user.getIdToken();
-
-        }
-
+export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+    },
+    global: {
+        headers: { "X-Client-Info": "uikimodder-web" }
     }
-
-);
-
-// ========================================
-// GLOBAL SUPABASE CLIENT
-// ========================================
+});
 
 window.supabaseClient = supabase;
-
-console.log("Supabase client initialized.");
