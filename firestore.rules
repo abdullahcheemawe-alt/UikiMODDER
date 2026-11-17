@@ -8,23 +8,17 @@ service cloud.firestore {
     }
 
     match /games/{gameId} {
-      // The published game catalogue is readable without signing in.
+      // Game catalogue can be browsed without an account.
       allow get, list: if true;
 
-      // Only the verified site administrator can publish or modify entries.
+      // Only the designated Firebase admin can publish or manage games.
       allow create: if isAdmin()
-        && request.resource.data.name is string
-        && request.resource.data.name.size() > 0
-        && request.resource.data.description is string
-        && request.resource.data.type in ["game", "app"]
-        && request.resource.data.published == true
-        && request.resource.data.active == true
         && request.resource.data.createdBy == request.auth.uid;
 
       allow update, delete: if isAdmin();
     }
 
-    // Deny all access to every other collection by default.
+    // All other collections remain private.
     match /{document=**} {
       allow read, write: if false;
     }
