@@ -181,13 +181,14 @@ function showItemDetails(itemId) {
     const description = item.description || "More information about this item will be added soon.";
     const type = String(item.type || "game").toLowerCase() === "app" ? "APP" : "GAME";
     const category = type === "APP" ? "Application" : (item.category || "Other");
+    const packageName = item.fileName || item.iconFileName || "Download package";
     const download = getSafeExternalUrl(item.downloadUrl || item.packageStorageUrl || item.fileUrl || item.url || item.downloadURL || "");
 
     $("#detailName").textContent = name;
     $("#detailTypeBadge").textContent = type;
     $("#detailCategory").textContent = category;
     $("#detailFileSize").textContent = formatPackageSize(item.fileSize);
-    $("#detailMetaCategory").textContent = category;
+    $("#detailFileType").textContent = packageName.length > 24 ? packageName.slice(0, 21) + "…" : packageName;
     $("#detailDescription").textContent = description;
 
     const cover = $("#detailCoverImage");
@@ -210,14 +211,14 @@ function showItemDetails(itemId) {
         downloadButton.classList.remove("is-disabled");
         downloadButton.removeAttribute("aria-disabled");
         downloadButton.setAttribute("download", item.fileName || "");
-        downloadButton.innerHTML = "<span>↓</span> DOWNLOAD NOW";
+        downloadButton.innerHTML = "<span>⬇</span> DOWNLOAD";
         downloadNote.textContent = "Your download is ready. The package will open or download through your browser.";
     } else {
         downloadButton.href = "#";
         downloadButton.classList.add("is-disabled");
         downloadButton.setAttribute("aria-disabled", "true");
         downloadButton.removeAttribute("download");
-        downloadButton.innerHTML = "<span>⌛</span> NOT AVAILABLE YET";
+        downloadButton.innerHTML = "<span>⌛</span> COMING SOON";
         downloadNote.textContent = "The download package is not available yet.";
     }
 
