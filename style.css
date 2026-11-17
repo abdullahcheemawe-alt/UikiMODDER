@@ -1398,3 +1398,277 @@ body { padding-bottom: 92px; }
 #gameDownloadUrl {
     width: 100%;
 }
+
+
+/* =========================================
+   PLAY-STORE STYLE LISTINGS + ITEM DETAILS
+========================================= */
+.game-list-card {
+    width: 100%;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px;
+    text-align: left;
+    color: var(--white);
+    font: inherit;
+    cursor: pointer;
+    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(23,30,61,.96), rgba(10,15,35,.98));
+    border: 1px solid rgba(126,151,255,.13);
+}
+.game-list-card:hover,
+.game-list-card:focus-visible {
+    transform: translateY(-3px);
+    border-color: rgba(0,245,255,.55);
+    box-shadow: 0 14px 34px rgba(0,217,255,.12);
+    outline: none;
+}
+.game-list-card .game-art {
+    width: 94px;
+    height: 94px;
+    flex: 0 0 94px;
+    border-radius: 19px;
+    overflow: hidden;
+    font-size: 36px;
+    background: linear-gradient(135deg,#263a70,#101a37);
+    border: 1px solid rgba(255,255,255,.12);
+}
+.game-list-card .game-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.game-list-card .game-info {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+}
+.game-card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.game-card-heading strong {
+    display: block;
+    min-width: 0;
+    color: #fff;
+    font-size: 16px;
+    line-height: 1.3;
+    font-weight: 800;
+}
+.game-card-arrow {
+    color: var(--cyan);
+    font-size: 21px;
+    flex: 0 0 auto;
+}
+.game-card-description {
+    display: -webkit-box;
+    margin: 7px 0 11px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.game-list-card .game-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+.game-list-card .category {
+    display: inline-block;
+    font-size: 10px;
+}
+.details-hint {
+    color: #8df8ff;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .7px;
+}
+.item-detail-section {
+    width: min(900px, 100%);
+    min-height: 75vh;
+    margin: 0 auto;
+    padding: 22px 5% 130px;
+    animation: slideUp .4s ease both;
+}
+.detail-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.detail-topbar > span {
+    color: #7f8db8;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.8px;
+}
+.detail-back-btn {
+    border: 1px solid rgba(0,245,255,.22);
+    border-radius: 30px;
+    padding: 10px 15px;
+    color: #dceaff;
+    background: rgba(17,25,54,.9);
+    font-size: 12px;
+    font-weight: 700;
+}
+.detail-cover {
+    position: relative;
+    height: clamp(190px, 38vw, 340px);
+    overflow: hidden;
+    border-radius: 25px;
+    background: radial-gradient(circle at 25% 20%,#315c9b,#171b48 58%,#101329);
+    border: 1px solid rgba(0,245,255,.22);
+    box-shadow: 0 22px 55px rgba(0,0,0,.28);
+}
+.detail-cover img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    object-position: center;
+}
+.detail-cover-shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(0deg,rgba(7,9,25,.5),transparent 65%);
+    pointer-events: none;
+}
+.detail-main {
+    position: relative;
+    margin: -35px 14px 0;
+    padding: 25px;
+    z-index: 1;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 24px;
+    background: linear-gradient(145deg,rgba(19,27,57,.98),rgba(9,14,32,.99));
+    box-shadow: 0 20px 55px rgba(0,0,0,.28);
+}
+.detail-app-heading {
+    display: flex;
+    align-items: center;
+    gap: 17px;
+}
+.detail-app-icon {
+    width: 86px;
+    height: 86px;
+    flex: 0 0 86px;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 22px;
+    background: linear-gradient(135deg,#00dfff,#745cff);
+    border: 2px solid rgba(255,255,255,.16);
+    box-shadow: 0 8px 28px rgba(0,225,255,.18);
+    font-size: 34px;
+}
+.detail-app-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.detail-title-wrap { min-width: 0; }
+.detail-type-badge {
+    display: inline-block;
+    margin-bottom: 5px;
+    color: #8fffe0;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 1.7px;
+}
+.detail-title-wrap h1 {
+    color: #fff;
+    font-size: clamp(22px,4vw,32px);
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+}
+.detail-title-wrap p {
+    margin-top: 7px;
+    color: #9da9ca;
+    font-size: 13px;
+}
+.detail-meta {
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 10px;
+    margin: 24px 0;
+    padding: 16px 0;
+    border-top: 1px solid rgba(255,255,255,.09);
+    border-bottom: 1px solid rgba(255,255,255,.09);
+}
+.detail-meta div { min-width: 0; text-align: center; }
+.detail-meta strong {
+    display: block;
+    color: #e9f4ff;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+.detail-meta span {
+    display: block;
+    margin-top: 5px;
+    color: #8793b7;
+    font-size: 10px;
+}
+.detail-download-btn {
+    display: flex;
+    min-height: 54px;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border-radius: 15px;
+    color: #061322;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: .7px;
+    background: linear-gradient(100deg,#00eaff,#6e83ff 55%,#d75cff);
+    box-shadow: 0 10px 28px rgba(0,220,255,.17);
+    transition: transform .2s, box-shadow .2s;
+}
+.detail-download-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(0,220,255,.25); }
+.detail-download-btn.is-disabled {
+    opacity: .55;
+    pointer-events: none;
+    filter: grayscale(.4);
+}
+.detail-download-btn span { font-size: 19px; }
+.detail-download-note {
+    margin-top: 10px;
+    color: #8793b7;
+    text-align: center;
+    font-size: 11px;
+    line-height: 1.5;
+}
+.detail-divider { height: 1px; margin: 27px 0; background: rgba(255,255,255,.09); }
+.detail-about .section-label { color: #67eaff; }
+.detail-about h2 { margin: 9px 0 12px; font-size: 25px; }
+.detail-about p { color: #b4bfdc; font-size: 14px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.detail-footer-note {
+    margin-top: 28px;
+    color: #7786ad;
+    text-align: center;
+    font-size: 11px;
+}
+@media (max-width: 650px) {
+    .games-grid { grid-template-columns: 1fr; }
+    .game-list-card { gap: 13px; padding: 12px; border-radius: 17px; }
+    .game-list-card .game-art { width: 82px; height: 82px; flex-basis: 82px; border-radius: 17px; }
+    .game-card-heading strong { font-size: 14px; }
+    .game-card-description { font-size: 11px; margin: 5px 0 8px; }
+    .details-hint { font-size: 9px; }
+    .item-detail-section { padding: 18px 4% 120px; }
+    .detail-main { margin: -24px 5px 0; padding: 18px 15px; }
+    .detail-app-icon { width: 72px; height: 72px; flex-basis: 72px; border-radius: 18px; }
+    .detail-meta { gap: 5px; margin: 19px 0; padding: 13px 0; }
+    .detail-meta strong { font-size: 10px; }
+    .detail-meta span { font-size: 9px; }
+    .detail-download-btn { min-height: 52px; }
+}
