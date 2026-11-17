@@ -93,7 +93,21 @@ function setAuthMode(mode) {
     setStatus($("#authStatus"), "");
 }
 
+const GAME_CACHE_KEY = "uikimodder-public-games-v1";
 let allGames = [];
+let hasLoadedGames = false;
+try {
+    const cachedGames = localStorage.getItem(GAME_CACHE_KEY);
+    if (cachedGames) {
+        const parsedGames = JSON.parse(cachedGames);
+        if (Array.isArray(parsedGames)) {
+            allGames = parsedGames;
+            hasLoadedGames = true;
+        }
+    }
+} catch (error) {
+    console.warn("UIKIMODDER game cache could not be read:", error);
+}
 let activeCategory = "All";
 
 
@@ -270,7 +284,7 @@ function renderItemCard(item, typeLabel) {
     const image = item.imageUrl || item.iconUrl || item.thumbnail || item.image || "";
     const category = typeLabel === "APP" ? "App" : (item.category || "Other");
     const art = image
-        ? '<img src="' + escapeHTML(image) + '" alt="' + escapeHTML(name) + '" loading="lazy" onerror="this.style.display=\'none\'">'
+        ? '<img src="' + escapeHTML(image) + '" alt="' + escapeHTML(name) + '" loading="eager" decoding="async" fetchpriority="low" onerror="this.style.display=\'none\'">'
         : '<span aria-hidden="true">' + (typeLabel === "APP" ? "▦" : "🎮") + '</span>';
 
     return '<button type="button" class="game-card game-list-card" data-item-id="' +
@@ -318,39 +332,77 @@ function renderGames() {
 async function loadGames() {
     const container = $("#gamesContainer");
     if (!container || container.dataset.loading === "true") return;
+
     container.dataset.loading = "true";
-    container.innerHTML = '<div class="games-loading"><span class="loading-spinner"></span><p>Loading your game collection...</p></div>';
-    $("#emptyState")?.classList.add("hidden");
+    const hasUsableContent = hasLoadedGames || allGames.length > 0;
+    if (hasUsableContent) {
+        // Keep the already-rendered collection visible while Firestore refreshes.
+        renderGames();
+        renderApps();
+    } else {
+        container.innerHTML = '<div class="games-loading"><span class="loading-spinner"></span><p>Loading your game collection...</p></div>';
+        $("#emptyState")?.classList.add("hidden");
+    }
 
     try {
         const snapshot = await getDocs(collection(db, "games"));
         allGames = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
             .filter((game) => game.active !== false && game.published !== false);
+        hasLoadedGames = true;
+
+        try {
+            // Cache only public listing fields so the library can paint instantly next visit.
+            const cacheSafeGames = allGames.map((game) => ({
+                id: game.id,
+                name: game.name || game.title || game.gameName || "Untitled",
+                title: game.title || "",
+                gameName: game.gameName || "",
+                description: game.description || "",
+                category: game.category || "Other",
+                type: game.type || "game",
+                imageUrl: game.imageUrl || "",
+                iconUrl: game.iconUrl || "",
+                thumbnail: game.thumbnail || "",
+                image: game.image || "",
+                downloadUrl: game.downloadUrl || "",
+                packageStorageUrl: game.packageStorageUrl || "",
+                fileName: game.fileName || "",
+                fileSize: Number(game.fileSize || 0),
+                active: game.active !== false,
+                published: game.published !== false
+            }));
+            localStorage.setItem(GAME_CACHE_KEY, JSON.stringify(cacheSafeGames));
+        } catch (cacheError) {
+            console.warn("UIKIMODDER game cache could not be saved:", cacheError);
+        }
+
         renderGames();
         renderApps();
     } catch (error) {
         console.error("Could not load games from Firestore:", error);
-        container.innerHTML = "";
-        allGames = [];
-        const empty = $("#emptyState");
-        empty?.classList.remove("hidden");
-        if ($("#emptyState h3")) $("#emptyState h3").textContent =
-            error.code === "permission-denied" ? "Game Library Access Blocked" : "Games Could Not Load";
-        if ($("#emptyState p")) $("#emptyState p").textContent =
-            error.code === "permission-denied"
-                ? "Firebase Firestore rules are blocking this account from reading the games collection. The library needs public or signed-in read permission."
-                : "Connection to the game library failed. Please try again.";
-        if (!$("#retryGamesBtn")) {
-            const retry = document.createElement("button");
-            retry.id = "retryGamesBtn";
-            retry.className = "retry-games-btn";
-            retry.type = "button";
-            retry.textContent = "TRY AGAIN";
-            retry.addEventListener("click", () => {
-                container.dataset.loading = "false";
-                loadGames();
-            });
-            $("#emptyState")?.append(retry);
+        if (!hasUsableContent) {
+            container.innerHTML = "";
+            allGames = [];
+            const empty = $("#emptyState");
+            empty?.classList.remove("hidden");
+            if ($("#emptyState h3")) $("#emptyState h3").textContent =
+                error.code === "permission-denied" ? "Game Library Access Blocked" : "Games Could Not Load";
+            if ($("#emptyState p")) $("#emptyState p").textContent =
+                error.code === "permission-denied"
+                    ? "Firebase Firestore rules are blocking this account from reading the games collection. The library needs public or signed-in read permission."
+                    : "Connection to the game library failed. Please try again.";
+            if (!$("#retryGamesBtn")) {
+                const retry = document.createElement("button");
+                retry.id = "retryGamesBtn";
+                retry.className = "retry-games-btn";
+                retry.type = "button";
+                retry.textContent = "TRY AGAIN";
+                retry.addEventListener("click", () => {
+                    container.dataset.loading = "false";
+                    loadGames();
+                });
+                $("#emptyState")?.append(retry);
+            }
         }
     } finally {
         container.dataset.loading = "false";
@@ -836,6 +888,9 @@ function initializeWebsite() {
     initializeNavigation();
     initializeAuthentication();
     initializeGameControls();
+
+    // Warm the public game library while the visitor is still on the home screen.
+    loadGames();
 
     const year = $("#currentYear");
     if (year) year.textContent = new Date().getFullYear();
