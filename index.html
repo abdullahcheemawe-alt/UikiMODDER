@@ -17,7 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=13">
 </head>
 
 <body>
@@ -217,6 +217,45 @@
 
     </main>
 
+
+
+    <!-- GAME / APP DETAILS PAGE -->
+    <section id="itemDetailSection" class="item-detail-section hidden" aria-live="polite">
+        <div class="detail-topbar">
+            <button id="detailBackBtn" class="detail-back-btn" type="button">← Back to collection</button>
+            <span>UIKIMODDER STORE</span>
+        </div>
+        <div class="detail-cover" id="detailCover">
+            <img id="detailCoverImage" src="" alt="" loading="eager">
+            <div class="detail-cover-shade"></div>
+        </div>
+        <div class="detail-main">
+            <div class="detail-app-heading">
+                <div class="detail-app-icon" id="detailAppIcon"><span>🎮</span></div>
+                <div class="detail-title-wrap">
+                    <span id="detailTypeBadge" class="detail-type-badge">GAME</span>
+                    <h1 id="detailName">Game title</h1>
+                    <p id="detailCategory">Action</p>
+                </div>
+            </div>
+            <div class="detail-meta">
+                <div><strong id="detailFileSize">—</strong><span>Package size</span></div>
+                <div><strong id="detailFileType">Game package</strong><span>Download type</span></div>
+                <div><strong>UIKIMODDER</strong><span>Publisher</span></div>
+            </div>
+            <a id="detailDownloadBtn" class="detail-download-btn" href="#" target="_blank" rel="noopener noreferrer">
+                <span>⬇</span> DOWNLOAD
+            </a>
+            <p id="detailDownloadNote" class="detail-download-note">Download the package directly from UIKIMODDER.</p>
+            <div class="detail-divider"></div>
+            <section class="detail-about">
+                <span class="section-label">DISCOVER MORE</span>
+                <h2>About this <span class="gradient-text">game.</span></h2>
+                <p id="detailDescription"></p>
+            </section>
+            <div class="detail-footer-note">✦ &nbsp; Your world. Your games. Your universe.</div>
+        </div>
+    </section>
 
     <!-- ADMIN DASHBOARD -->
     <section id="adminSection" class="admin-section hidden">
@@ -520,6 +559,6 @@
     <!-- JAVASCRIPT -->
     
 
-    <script type="module" src="./js/app.js?v=19"></script>
+    <script type="module" src="./js/app.js?v=20"></script>
 </body>
 </html>
