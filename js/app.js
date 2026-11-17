@@ -23,7 +23,7 @@ import {
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
-import { supabase } from "./supabase.js";
+import { supabase, SUPABASE_PUBLISHABLE_KEY } from "./supabase.js?v=2";
 import { Upload as TusUpload } from "https://esm.sh/tus-js-client@4.3.1";
 
 const firebaseConfig = {
@@ -343,8 +343,17 @@ async function createSignedUploadBatch(files) {
         headers: { Authorization: "Bearer " + token }
     });
     if (error) {
-        const detail = error.context?.body?.error || error.message;
-        throw new Error(detail || "Could not prepare the secure upload.");
+        let detail = "";
+        try {
+            const response = error.context;
+            if (response && typeof response.clone === "function") {
+                const payload = await response.clone().json();
+                detail = payload?.error || payload?.message || "";
+            }
+        } catch {
+            // Keep the SDK error as a fallback when the response is not JSON.
+        }
+        throw new Error(detail || error.message || "Could not prepare the secure upload.");
     }
     if (!data?.ok || !Array.isArray(data.uploads)) {
         throw new Error(data?.error || "The upload service returned an invalid response.");
@@ -358,7 +367,7 @@ function uploadFileWithProgress(file, signedUpload, label, onProgress) {
             endpoint: "https://netztjoroixlbqntbnxi.storage.supabase.co/storage/v1/upload/resumable",
             retryDelays: [0, 1000, 3000, 5000, 10000],
             headers: {
-                apikey: "sb_publishable_0-_r-gxKmsraV_ew5uXG_W_UdkuX7tv",
+                apikey: SUPABASE_PUBLISHABLE_KEY,
                 "x-signature": signedUpload.token
             },
             uploadDataDuringCreation: true,
@@ -449,22 +458,12 @@ function initializeNavigation() {
         const itemType = $("#itemType")?.value || "game";
         const iconFile = $("#gameIcon")?.files?.[0];
         const file = $("#gameFile")?.files?.[0];
-        const downloadLinkInput = $("#gameDownloadUrl")?.value.trim() || "";
-        const externalDownloadUrl = downloadLinkInput ? getSafeExternalUrl(downloadLinkInput) : "";
         if (!name || !description || !category || !iconFile) {
             setStatus($("#uploadStatus"), "Please complete the game details and select a game icon.", true);
             return;
         }
-        if (downloadLinkInput && !externalDownloadUrl) {
-            setStatus($("#uploadStatus"), "Please enter a valid download URL starting with https:// or http://.", true);
-            return;
-        }
-        if (!file && !externalDownloadUrl) {
-            setStatus($("#uploadStatus"), "Choose a package file or enter an external download link.", true);
-            return;
-        }
-        if (file && externalDownloadUrl) {
-            setStatus($("#uploadStatus"), "Use either a package file or an external download link, not both.", true);
+        if (!file) {
+            setStatus($("#uploadStatus"), "Please select a game package file.", true);
             return;
         }
         if (!iconFile.type.startsWith("image/")) {
@@ -492,20 +491,20 @@ function initializeNavigation() {
         try {
             const optimizedIcon = await makeUploadOptimizedIcon(iconFile);
             const uploadFiles = [{ kind: "icon", name: optimizedIcon.name, size: optimizedIcon.size }];
-            if (file) uploadFiles.push({ kind: "package", name: file.name, size: file.size });
+            uploadFiles.push({ kind: "package", name: file.name, size: file.size });
 
             setStatus($("#uploadStatus"), "Preparing secure Supabase upload...");
             const signedBatch = await createSignedUploadBatch(uploadFiles);
             createdPaths = signedBatch.uploads.map((item) => item.path);
             const iconUpload = signedBatch.uploads.find((item) => item.kind === "icon");
             const packageUpload = signedBatch.uploads.find((item) => item.kind === "package");
-            if (!iconUpload || (file && !packageUpload)) {
+            if (!iconUpload || !packageUpload) {
                 throw new Error("The upload service did not return all required upload permissions.");
             }
 
             let iconProgress = 0;
             let packageProgress = 0;
-            const totalBytes = optimizedIcon.size + (file ? file.size : 0);
+            const totalBytes = optimizedIcon.size + file.size;
             const progressFill = $("#uploadProgressFill");
             const progressText = $("#uploadProgressText");
             const updateCombinedProgress = () => {
@@ -525,7 +524,7 @@ function initializeNavigation() {
                     updateCombinedProgress();
                 })
             ];
-            if (file && packageUpload) {
+            if (packageUpload) {
                 uploadTasks.push(uploadFileWithProgress(file, packageUpload, "Game package", (bytes) => {
                     packageProgress = bytes;
                     updateCombinedProgress();
@@ -533,7 +532,7 @@ function initializeNavigation() {
             }
             const uploadedUrls = await Promise.all(uploadTasks);
             const iconUrl = uploadedUrls[0];
-            const packageDownloadUrl = file ? uploadedUrls[1] : externalDownloadUrl;
+            const packageDownloadUrl = uploadedUrls[1];
 
             if (progressFill) progressFill.style.width = "100%";
             if (progressText) progressText.textContent = "100%";
@@ -543,13 +542,13 @@ function initializeNavigation() {
                 name, description, category, type: itemType,
                 downloadUrl: packageDownloadUrl,
                 packageStorageUrl: file ? packageDownloadUrl : "",
-                storageProvider: file ? "supabase" : "external",
-                storageBucket: file ? "uikimodder-files" : "",
-                storagePath: packageUpload?.path || "",
+                storageProvider: "supabase",
+                storageBucket: "uikimodder-files",
+                storagePath: packageUpload.path,
                 imageUrl: iconUrl,
                 iconFileName: iconFile.name,
-                fileName: file?.name || "",
-                fileSize: file?.size || 0,
+                fileName: file.name,
+                fileSize: file.size,
                 active: true, published: true, createdBy: user.uid,
                 createdAt: serverTimestamp()
             });
