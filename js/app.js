@@ -431,17 +431,6 @@ function initializeNavigation() {
             setStatus($("#uploadStatus"), "Please complete the game details, icon image, and package file fields.", true);
             return;
         }
-        let parsedDownloadUrl;
-        try {
-            parsedDownloadUrl = new URL(downloadUrlInput);
-        } catch {
-            setStatus($("#uploadStatus"), "Please enter a valid download link.", true);
-            return;
-        }
-        if (!["https:", "http:"].includes(parsedDownloadUrl.protocol)) {
-            setStatus($("#uploadStatus"), "The download link must start with http:// or https://.", true);
-            return;
-        }
         if (!iconFile.type.startsWith("image/")) {
             setStatus($("#uploadStatus"), "Please select an image file for the game icon.", true);
             return;
@@ -457,7 +446,12 @@ function initializeNavigation() {
 
         const button = $("#uploadBtn");
         button.disabled = true;
-        setStatus($("#uploadStatus"), "Uploading game icon...");
+        button.setAttribute("aria-busy", "true");
+        button.textContent = "UPLOADING...";
+        $("#uploadProgress")?.classList.remove("hidden");
+        if ($("#uploadProgressFill")) $("#uploadProgressFill").style.width = "0%";
+        if ($("#uploadProgressText")) $("#uploadProgressText").textContent = "0%";
+        setStatus($("#uploadStatus"), "Preparing your game files...");
         try {
             const itemId = crypto.randomUUID();
             setStatus($("#uploadStatus"), "Optimizing game icon...");
@@ -470,20 +464,29 @@ function initializeNavigation() {
             // Upload icon and package together to reduce total waiting time.
             let iconProgress = 0;
             let packageProgress = 0;
+            const progressPanel = $("#uploadProgress");
+            const progressFill = $("#uploadProgressFill");
+            const progressText = $("#uploadProgressText");
+            progressPanel?.classList.remove("hidden");
+            if (progressFill) progressFill.style.width = "0%";
+            if (progressText) progressText.textContent = "0%";
+
             const updateCombinedProgress = () => {
                 const total = optimizedIcon.size + file.size;
                 const transferred = iconProgress + packageProgress;
-                const percent = total ? Math.round((transferred / total) * 100) : 0;
-                setStatus($("#uploadStatus"), "Uploading files: " + percent + "%");
+                const percent = total ? Math.min(100, Math.round((transferred / total) * 100)) : 0;
+                if (progressFill) progressFill.style.width = percent + "%";
+                if (progressText) progressText.textContent = percent + "%";
+                setStatus($("#uploadStatus"), "Uploading game and icon — " + percent + "% complete. Please keep this page open.");
             };
 
-            setStatus($("#uploadStatus"), "Uploading game icon and package...");
+            setStatus($("#uploadStatus"), "Starting upload. Your game icon and package are uploading together...");
             const [uploadedIconRef, uploadedPackageRef] = await Promise.all([
-                uploadFileWithProgress(optimizedIcon, iconRef, "Game icon", (bytes) => {
+                uploadFileWithProgress(optimizedIcon, iconRef, "Game icon", (bytes, totalBytes) => {
                     iconProgress = bytes;
                     updateCombinedProgress();
                 }),
-                uploadFileWithProgress(file, fileRef, "Game package", (bytes) => {
+                uploadFileWithProgress(file, fileRef, "Game package", (bytes, totalBytes) => {
                     packageProgress = bytes;
                     updateCombinedProgress();
                 })
@@ -504,7 +507,9 @@ function initializeNavigation() {
                 createdAt: serverTimestamp()
             });
             $("#uploadForm").reset();
-            setStatus($("#uploadStatus"), "Successfully published! Users can download the file directly from UIKIMODDER.");
+            if ($("#uploadProgressFill")) $("#uploadProgressFill").style.width = "100%";
+            if ($("#uploadProgressText")) $("#uploadProgressText").textContent = "100%";
+            setStatus($("#uploadStatus"), "Upload complete! Your game is now published and ready to download from UIKIMODDER.");
             await loadGames();
             renderApps();
         } catch (error) {
@@ -517,6 +522,8 @@ function initializeNavigation() {
             setStatus($("#uploadStatus"), "Upload failed: " + reason, true);
         } finally {
             button.disabled = false;
+            button.removeAttribute("aria-busy");
+            button.textContent = "UPLOAD GAME +";
         }
     });
 
