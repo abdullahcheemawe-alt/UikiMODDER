@@ -112,36 +112,6 @@ function escapeHTML(value = "") {
 }
 
 function setActiveBottomTab(view) {
-    $("#retryPublishBtn")?.addEventListener("click", async () => {
-        if (!pendingGameRecord) {
-            setStatus($("#uploadStatus"), "There is no pending game record to publish.", true);
-            return;
-        }
-        const retryButton = $("#retryPublishBtn");
-        retryButton.disabled = true;
-        retryButton.textContent = "SAVING...";
-        try {
-            await addDoc(collection(db, "games"), pendingGameRecord);
-            pendingGameRecord = null;
-            retryButton.classList.add("hidden");
-            $("#uploadForm")?.reset();
-            $("#gameIconPreview")?.classList.add("hidden");
-            setStatus($("#uploadStatus"), "Published successfully! Your game is now in the UIKIMODDER library.");
-            await loadGames();
-            renderApps();
-        } catch (error) {
-            console.error("Retry Firestore publish failed:", error);
-            setStatus($("#uploadStatus"),
-                "Firestore still rejected the record (" + (error.code || error.message) +
-                "). Check that the latest Firestore rules are published.",
-                true
-            );
-        } finally {
-            retryButton.disabled = false;
-            retryButton.textContent = "RETRY PUBLISH";
-        }
-    });
-
     document.querySelectorAll(".bottom-nav-item").forEach((button) => {
         button.classList.toggle("active", button.dataset.view === view || (view === "search" && button.dataset.view === "games"));
     });
@@ -153,6 +123,7 @@ function hideMainViews() {
     $("#appsSection")?.classList.add("hidden");
     $("#profileSection")?.classList.add("hidden");
     $("#adminSection")?.classList.add("hidden");
+    $("#itemDetailSection")?.classList.add("hidden");
 }
 
 function showStore(scroll = true) {
@@ -183,25 +154,80 @@ function renderApps() {
         && item.active !== false && item.published !== false
     );
 
-    container.innerHTML = apps.map((item) => {
-        const name = item.name || item.title || "Untitled App";
-        const description = item.description || "Explore this app.";
-        const image = item.imageUrl || item.iconUrl || item.thumbnail || item.image || "";
-        const download = item.downloadUrl || item.fileUrl || item.url || item.downloadURL || "";
-        const safeDownload = getSafeExternalUrl(download);
-        const art = image
-            ? '<img src="' + escapeHTML(image) + '" alt="' + escapeHTML(name) + '" loading="lazy" onerror="this.style.display=\'none\'">'
-            : '<span aria-hidden="true">▦</span>';
-        const action = safeDownload
-            ? '<a class="download-link" href="' + escapeHTML(safeDownload) + '" target="_blank" rel="noopener noreferrer">DOWNLOAD ↗</a>'
-            : '<span class="category">Coming Soon</span>';
-        return '<article class="game-card"><div class="game-art">' + art + '</div><div class="game-info"><h3>'
-            + escapeHTML(name) + '</h3><p>' + escapeHTML(description)
-            + '</p><div class="game-bottom"><span class="category">App</span>' + action
-            + '</div></div></article>';
-    }).join("");
-
+    container.innerHTML = apps.map((item) => renderItemCard(item, "APP")).join("");
     empty.classList.toggle("hidden", apps.length !== 0);
+}
+
+let detailReturnView = "games";
+
+function formatPackageSize(bytes) {
+    const size = Number(bytes);
+    if (!Number.isFinite(size) || size <= 0) return "Not listed";
+    if (size < 1024 * 1024) return (size / 1024).toFixed(0) + " KB";
+    return (size / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+function showItemDetails(itemId) {
+    const item = allGames.find((entry) => String(entry.id) === String(itemId));
+    if (!item) return;
+
+    detailReturnView = $("#appsSection")?.classList.contains("hidden") ? "games" : "apps";
+    hideMainViews();
+    $("#itemDetailSection")?.classList.remove("hidden");
+    $("#bottomNav")?.classList.remove("hidden");
+
+    const name = item.name || item.title || item.gameName || "Untitled";
+    const image = item.imageUrl || item.iconUrl || item.thumbnail || item.image || "";
+    const description = item.description || "More information about this item will be added soon.";
+    const type = String(item.type || "game").toLowerCase() === "app" ? "APP" : "GAME";
+    const category = type === "APP" ? "Application" : (item.category || "Other");
+    const packageName = item.fileName || item.iconFileName || "Download package";
+    const download = getSafeExternalUrl(item.downloadUrl || item.packageStorageUrl || item.fileUrl || item.url || item.downloadURL || "");
+
+    $("#detailName").textContent = name;
+    $("#detailTypeBadge").textContent = type;
+    $("#detailCategory").textContent = category;
+    $("#detailFileSize").textContent = formatPackageSize(item.fileSize);
+    $("#detailFileType").textContent = packageName.length > 24 ? packageName.slice(0, 21) + "…" : packageName;
+    $("#detailDescription").textContent = description;
+
+    const cover = $("#detailCoverImage");
+    const icon = $("#detailAppIcon");
+    if (image) {
+        cover.src = image;
+        cover.alt = name + " artwork";
+        cover.classList.remove("hidden");
+        icon.innerHTML = '<img src="' + escapeHTML(image) + '" alt="' + escapeHTML(name) + ' icon">';
+    } else {
+        cover.removeAttribute("src");
+        cover.classList.add("hidden");
+        icon.innerHTML = "<span>" + (type === "APP" ? "▦" : "🎮") + "</span>";
+    }
+
+    const downloadButton = $("#detailDownloadBtn");
+    const downloadNote = $("#detailDownloadNote");
+    if (download) {
+        downloadButton.href = download;
+        downloadButton.classList.remove("is-disabled");
+        downloadButton.removeAttribute("aria-disabled");
+        downloadButton.setAttribute("download", item.fileName || "");
+        downloadButton.innerHTML = "<span>⬇</span> DOWNLOAD";
+        downloadNote.textContent = "Your download is ready. The package will open or download through your browser.";
+    } else {
+        downloadButton.href = "#";
+        downloadButton.classList.add("is-disabled");
+        downloadButton.setAttribute("aria-disabled", "true");
+        downloadButton.removeAttribute("download");
+        downloadButton.innerHTML = "<span>⌛</span> COMING SOON";
+        downloadNote.textContent = "The download package is not available yet.";
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function returnFromItemDetails() {
+    if (detailReturnView === "apps") showApps();
+    else showStore();
 }
 
 function showAdminUpload() {
@@ -237,6 +263,26 @@ async function performSignOut() {
     }
 }
 
+function renderItemCard(item, typeLabel) {
+    const id = String(item.id || "");
+    const name = item.name || item.title || item.gameName || "Untitled";
+    const description = item.description || "Explore this item on UIKIMODDER.";
+    const image = item.imageUrl || item.iconUrl || item.thumbnail || item.image || "";
+    const category = typeLabel === "APP" ? "App" : (item.category || "Other");
+    const art = image
+        ? '<img src="' + escapeHTML(image) + '" alt="' + escapeHTML(name) + '" loading="lazy" onerror="this.style.display=\'none\'">'
+        : '<span aria-hidden="true">' + (typeLabel === "APP" ? "▦" : "🎮") + '</span>';
+
+    return '<button type="button" class="game-card game-list-card" data-item-id="' +
+        escapeHTML(id) + '" aria-label="View details for ' + escapeHTML(name) + '">' +
+        '<span class="game-art">' + art + '</span>' +
+        '<span class="game-info"><span class="game-card-heading"><strong>' + escapeHTML(name) +
+        '</strong><span class="game-card-arrow" aria-hidden="true">↗</span></span>' +
+        '<span class="game-card-description">' + escapeHTML(description) + '</span>' +
+        '<span class="game-bottom"><span class="category">' + escapeHTML(category) +
+        '</span><span class="details-hint">VIEW DETAILS&nbsp; ›</span></span></span></button>';
+}
+
 function renderGames() {
     const container = $("#gamesContainer");
     const empty = $("#emptyState");
@@ -255,24 +301,7 @@ function renderGames() {
     });
 
     if (count) count.textContent = filtered.length + (filtered.length === 1 ? " Game" : " Games");
-    container.innerHTML = filtered.map((game) => {
-        const name = game.name || game.title || game.gameName || "Untitled Game";
-        const description = game.description || "Get ready for your next adventure.";
-        const category = game.category || "Other";
-        const image = game.imageUrl || game.iconUrl || game.thumbnail || game.image || "";
-        const download = game.downloadUrl || game.fileUrl || game.url || game.downloadURL || "";
-        const safeDownload = getSafeExternalUrl(download);
-        const art = image
-            ? '<img src="' + escapeHTML(image) + '" alt="' + escapeHTML(name) + '" loading="lazy" onerror="this.style.display=\'none\'">'
-            : '<span aria-hidden="true">🎮</span>';
-        const action = safeDownload
-            ? '<a class="download-link" href="' + escapeHTML(safeDownload) + '" target="_blank" rel="noopener noreferrer">DOWNLOAD ↗</a>'
-            : '<span class="category">Coming Soon</span>';
-        return '<article class="game-card"><div class="game-art">' + art + '</div><div class="game-info"><h3>' +
-            escapeHTML(name) + '</h3><p>' + escapeHTML(description) +
-            '</p><div class="game-bottom"><span class="category">' + escapeHTML(category) +
-            '</span>' + action + '</div></div></article>';
-    }).join("");
+    container.innerHTML = filtered.map((game) => renderItemCard(game, "GAME")).join("");
 
     $("#retryGamesBtn")?.remove();
     empty.classList.toggle("hidden", filtered.length !== 0);
@@ -329,6 +358,13 @@ async function loadGames() {
 }
 
 function initializeGameControls() {
+    ["#gamesContainer", "#appsContainer"].forEach((selector) => {
+        const container = $(selector);
+        container?.addEventListener("click", (event) => {
+            const card = event.target.closest("[data-item-id]");
+            if (card) showItemDetails(card.dataset.itemId);
+        });
+    });
     $("#searchInput")?.addEventListener("input", renderGames);
     document.querySelectorAll(".category-btn").forEach((button) => {
         button.addEventListener("click", () => {
@@ -461,6 +497,37 @@ async function cleanupSupabaseUploads(paths) {
 }
 
 function initializeNavigation() {
+    $("#retryPublishBtn")?.addEventListener("click", async () => {
+        if (!pendingGameRecord) {
+            setStatus($("#uploadStatus"), "There is no pending game record to publish.", true);
+            return;
+        }
+        const retryButton = $("#retryPublishBtn");
+        retryButton.disabled = true;
+        retryButton.textContent = "SAVING...";
+        try {
+            await addDoc(collection(db, "games"), pendingGameRecord);
+            pendingGameRecord = null;
+            retryButton.classList.add("hidden");
+            $("#uploadForm")?.reset();
+            $("#gameIconPreview")?.classList.add("hidden");
+            setStatus($("#uploadStatus"), "Published successfully! Your game is now in the UIKIMODDER library.");
+            await loadGames();
+            renderApps();
+        } catch (error) {
+            console.error("Retry Firestore publish failed:", error);
+            setStatus($("#uploadStatus"),
+                "Firestore still rejected the record (" + (error.code || error.message) +
+                "). Check that the latest Firestore rules are published.",
+                true
+            );
+        } finally {
+            retryButton.disabled = false;
+            retryButton.textContent = "RETRY PUBLISH";
+        }
+    });
+
+    $("#detailBackBtn")?.addEventListener("click", returnFromItemDetails);
     $("#loginOpen")?.addEventListener("click", () => openAuthModal("signin"));
     $("#signupOpen")?.addEventListener("click", () => openAuthModal("signup"));
     $("#exploreBtn")?.addEventListener("click", showStore);
