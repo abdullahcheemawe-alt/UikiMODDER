@@ -1095,7 +1095,9 @@ button:disabled {
         font-size: 14px;
     }
 
-     @media (prefers-reduced-motion: reduce) {
+}
+
+@media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
@@ -1104,8 +1106,6 @@ button:disabled {
         scroll-behavior: auto !important;
         transition-duration: 0.01ms !important;
     }
-}
-
 }
 
 /* =========================================
