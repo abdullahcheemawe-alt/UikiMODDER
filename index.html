@@ -299,19 +299,6 @@
                 </select>
 
 
-                <label for="gameDownloadUrl">
-                    External Download Link (ZIP, RAR, 7Z, APK, XAPK, and other files)
-                </label>
-                <input
-                    type="url"
-                    id="gameDownloadUrl"
-                    placeholder="https://example.com/game.zip"
-                    inputmode="url"
-                    autocomplete="url"
-                    aria-describedby="gameDownloadHelp"
-                >
-                <small id="gameDownloadHelp" class="upload-help">Paste a direct or hosted download URL. Use either this link or select a package file below. Only HTTP and HTTPS links are accepted.</small>
-
                 <label for="gameIcon">
                     Game Icon
                 </label>
@@ -331,15 +318,16 @@
 
 
                 <label for="gameFile">
-                    Or Upload Package File (optional)
+                    Game Package File
                 </label>
 
                 <input
                     type="file"
                     id="gameFile"
+                    required
                     aria-describedby="gameFileHelp"
                 >
-                <small id="gameFileHelp" class="upload-help">Supported formats include ZIP, RAR, 7Z, APK, XAPK, EXE, PDF, and other file types. Maximum 50 MB on the current Supabase plan.</small>
+                <small id="gameFileHelp" class="upload-help">Select the game or app package from your device. Supported formats include ZIP, RAR, 7Z, APK, XAPK, EXE, PDF, and other file types. Maximum 50 MB.</small>
 
 
                 <button
@@ -531,6 +519,6 @@
     <!-- JAVASCRIPT -->
     
 
-    <script type="module" src="./js/app.js?v=16"></script>
+    <script type="module" src="./js/app.js?v=17"></script>
 </body>
 </html>
