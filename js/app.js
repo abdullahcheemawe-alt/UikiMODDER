@@ -516,20 +516,24 @@ function initializeNavigation() {
                 setStatus($("#uploadStatus"), "Uploading to Supabase — " + percent + "% complete.");
             };
 
-            setStatus($("#uploadStatus"), "Uploading game icon to Supabase...");
-            const iconUrl = await uploadFileWithProgress(optimizedIcon, iconUpload, "Game icon", (bytes) => {
-                iconProgress = bytes;
-                updateCombinedProgress();
-            });
-
-            let packageDownloadUrl = externalDownloadUrl;
+            setStatus($("#uploadStatus"), file
+                ? "Uploading game icon and package to Supabase in parallel..."
+                : "Uploading game icon to Supabase...");
+            const uploadTasks = [
+                uploadFileWithProgress(optimizedIcon, iconUpload, "Game icon", (bytes) => {
+                    iconProgress = bytes;
+                    updateCombinedProgress();
+                })
+            ];
             if (file && packageUpload) {
-                setStatus($("#uploadStatus"), "Uploading game package to Supabase...");
-                packageDownloadUrl = await uploadFileWithProgress(file, packageUpload, "Game package", (bytes) => {
+                uploadTasks.push(uploadFileWithProgress(file, packageUpload, "Game package", (bytes) => {
                     packageProgress = bytes;
                     updateCombinedProgress();
-                });
+                }));
             }
+            const uploadedUrls = await Promise.all(uploadTasks);
+            const iconUrl = uploadedUrls[0];
+            const packageDownloadUrl = file ? uploadedUrls[1] : externalDownloadUrl;
 
             if (progressFill) progressFill.style.width = "100%";
             if (progressText) progressText.textContent = "100%";
