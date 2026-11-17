@@ -337,7 +337,14 @@
                     UPLOAD GAME +
                 </button>
 
-                <p id="uploadStatus" class="status-message"></p>
+                <div id="uploadProgress" class="upload-progress hidden" role="status" aria-live="polite">
+                    <div class="upload-progress-track">
+                        <div id="uploadProgressFill" class="upload-progress-fill"></div>
+                    </div>
+                    <span id="uploadProgressText" class="upload-progress-text">0%</span>
+                </div>
+
+                <p id="uploadStatus" class="status-message" role="status" aria-live="polite"></p>
 
             </form>
 
