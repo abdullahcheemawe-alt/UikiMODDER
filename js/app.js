@@ -209,7 +209,7 @@ async function performSignOut() {
         closeAuthModal();
     } catch (error) {
         console.error("Sign-out failed:", error);
-        alert("Sign out nahi ho saka. Dobara koshish karein.");
+        alert("Unable to sign out. Please try again.");
     }
 }
 
@@ -403,7 +403,7 @@ function initializeNavigation() {
             return;
         }
         if (selected.size > 10 * 1024 * 1024) {
-            setStatus($("#uploadStatus"), "Game icon image 10 MB ya us se chhoti honi chahiye.", true);
+            setStatus($("#uploadStatus"), "The game icon image must be 10 MB or smaller.", true);
             event.currentTarget.value = "";
             preview?.classList.add("hidden");
             return;
@@ -428,26 +428,26 @@ function initializeNavigation() {
         const iconFile = $("#gameIcon")?.files?.[0];
         const file = $("#gameFile")?.files?.[0];
         if (!name || !description || !category || !iconFile || !file) {
-            setStatus($("#uploadStatus"), "Game details, icon image aur package file complete karein.", true);
+            setStatus($("#uploadStatus"), "Please complete the game details, icon image, and package file fields.", true);
             return;
         }
         let parsedDownloadUrl;
         try {
             parsedDownloadUrl = new URL(downloadUrlInput);
         } catch {
-            setStatus($("#uploadStatus"), "Valid MediaFire ya download link paste karein.", true);
+            setStatus($("#uploadStatus"), "Please enter a valid download link.", true);
             return;
         }
         if (!["https:", "http:"].includes(parsedDownloadUrl.protocol)) {
-            setStatus($("#uploadStatus"), "Download link http:// ya https:// se start hona chahiye.", true);
+            setStatus($("#uploadStatus"), "The download link must start with http:// or https://.", true);
             return;
         }
         if (!iconFile.type.startsWith("image/")) {
-            setStatus($("#uploadStatus"), "Game Icon ke liye gallery se image file select karein.", true);
+            setStatus($("#uploadStatus"), "Please select an image file for the game icon.", true);
             return;
         }
         if (iconFile.size > 10 * 1024 * 1024) {
-            setStatus($("#uploadStatus"), "Game icon image 10 MB ya us se chhoti honi chahiye.", true);
+            setStatus($("#uploadStatus"), "The game icon image must be 10 MB or smaller.", true);
             return;
         }
         if (file.size > 500 * 1024 * 1024) {
@@ -568,12 +568,12 @@ function initializeAuthentication() {
         const status = $("#authStatus");
 
         if (!email || !password) {
-            setStatus(status, "Email aur password enter karein.", true);
+            setStatus(status, "Please enter your email address and password.", true);
             return;
         }
 
         if (mode === "signup" && !displayName) {
-            setStatus(status, "Apna naam enter karein.", true);
+            setStatus(status, "Please enter your name.", true);
             return;
         }
 
@@ -599,16 +599,16 @@ function initializeAuthentication() {
         } catch (error) {
             console.error("Firebase authentication error:", error);
             const messages = {
-                "auth/email-already-in-use": "Is email par pehle se account mojood hai. Sign In karein.",
-                "auth/invalid-email": "Email address durust nahi hai.",
-                "auth/weak-password": "Password kam az kam 6 characters ka hona chahiye.",
-                "auth/user-not-found": "Is email ka account nahi mila. Pehle account create karein.",
-                "auth/wrong-password": "Password ghalat hai.",
-                "auth/invalid-credential": "Email ya password ghalat hai.",
-                "auth/too-many-requests": "Bohat zyada attempts hue. Kuch dair baad dobara koshish karein.",
-                "auth/network-request-failed": "Internet connection check karein."
+                "auth/email-already-in-use": "An account with this email already exists. Please sign in instead.",
+                "auth/invalid-email": "Please enter a valid email address.",
+                "auth/weak-password": "Your password must be at least 6 characters long.",
+                "auth/user-not-found": "No account was found with this email address. Please create an account first.",
+                "auth/wrong-password": "The password is incorrect.",
+                "auth/invalid-credential": "The email address or password is incorrect.",
+                "auth/too-many-requests": "Too many attempts. Please try again later.",
+                "auth/network-request-failed": "Please check your internet connection."
             };
-            setStatus(status, messages[error.code] || error.message || "Authentication fail ho gayi.", true);
+            setStatus(status, messages[error.code] || error.message || "Authentication failed. Please try again.", true);
         } finally {
             submit.disabled = false;
             submit.removeAttribute("aria-busy");
