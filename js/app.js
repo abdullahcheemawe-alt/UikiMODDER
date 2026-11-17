@@ -23,12 +23,8 @@ import {
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
-import {
-    getStorage,
-    ref,
-    uploadBytesResumable,
-    getDownloadURL
-} from "https://www.gstatic.com/firebasejs/13.3.0/firebase-storage.js";
+import { supabase } from "./supabase.js";
+import { Upload as TusUpload } from "https://esm.sh/tus-js-client@4.3.1";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCEaZ4ik3gcMScg23FVS99OLKxUnB8LHsY",
@@ -42,15 +38,12 @@ const firebaseConfig = {
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
 window.firebaseApp = app;
 window.firebaseAuth = auth;
 window.firebaseDB = db;
 
-// This website currently uses Firebase for authentication, game data, and package storage.
-// Supabase is intentionally not imported during startup so it cannot block page controls.
-window.supabaseClient = null;
+window.supabaseClient = supabase;
 
 const $ = (selector) => document.querySelector(selector);
 
@@ -341,41 +334,70 @@ async function makeUploadOptimizedIcon(file) {
     }
 }
 
-function uploadFileWithProgress(file, storageRef, label, onProgress) {
-    return new Promise((resolve, reject) => {
-        const task = uploadBytesResumable(storageRef, file, {
-            contentType: file.type || "application/octet-stream"
-        });
-        let lastTransferred = 0;
-        let idleTimer;
-
-        const resetIdleTimer = () => {
-            window.clearTimeout(idleTimer);
-            idleTimer = window.setTimeout(() => {
-                task.cancel();
-                reject(new Error(label + " upload stalled: no progress for 3 minutes. Check your internet and try again."));
-            }, 180000);
-        };
-
-        resetIdleTimer();
-        task.on("state_changed", (snapshot) => {
-            if (snapshot.bytesTransferred > lastTransferred) {
-                lastTransferred = snapshot.bytesTransferred;
-                resetIdleTimer();
-            }
-            const percent = snapshot.totalBytes
-                ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
-                : 0;
-            if (onProgress) onProgress(snapshot.bytesTransferred, snapshot.totalBytes, percent);
-            else setStatus($("#uploadStatus"), label + " uploading: " + percent + "%");
-        }, (error) => {
-            window.clearTimeout(idleTimer);
-            reject(error);
-        }, () => {
-            window.clearTimeout(idleTimer);
-            resolve(task.snapshot.ref);
-        });
+async function createSignedUploadBatch(files) {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Please sign in again before uploading.");
+    const token = await user.getIdToken();
+    const { data, error } = await supabase.functions.invoke("create-game-upload", {
+        body: { files },
+        headers: { Authorization: "Bearer " + token }
     });
+    if (error) {
+        const detail = error.context?.body?.error || error.message;
+        throw new Error(detail || "Could not prepare the secure upload.");
+    }
+    if (!data?.ok || !Array.isArray(data.uploads)) {
+        throw new Error(data?.error || "The upload service returned an invalid response.");
+    }
+    return data;
+}
+
+function uploadFileWithProgress(file, signedUpload, label, onProgress) {
+    return new Promise((resolve, reject) => {
+        const upload = new TusUpload(file, {
+            endpoint: "https://netztjoroixlbqntbnxi.storage.supabase.co/storage/v1/upload/resumable",
+            retryDelays: [0, 1000, 3000, 5000, 10000],
+            headers: {
+                apikey: "sb_publishable_0-_r-gxKmsraV_ew5uXG_W_UdkuX7tv",
+                "x-signature": signedUpload.token
+            },
+            uploadDataDuringCreation: true,
+            removeFingerprintOnSuccess: true,
+            chunkSize: 6 * 1024 * 1024,
+            metadata: {
+                bucketName: "uikimodder-files",
+                objectName: signedUpload.path,
+                contentType: file.type || "application/octet-stream",
+                cacheControl: "3600"
+            },
+            onError(error) {
+                reject(new Error(label + " upload failed: " + (error?.message || "Storage rejected the upload.")));
+            },
+            onProgress(bytesUploaded, bytesTotal) {
+                if (onProgress) onProgress(bytesUploaded, bytesTotal);
+            },
+            onSuccess() {
+                resolve(signedUpload.publicUrl);
+            }
+        });
+        upload.findPreviousUploads().then((previous) => {
+            if (previous.length) upload.resumeFromPreviousUpload(previous[0]);
+            upload.start();
+        }).catch(reject);
+    });
+}
+
+async function cleanupSupabaseUploads(paths) {
+    if (!paths?.length || !auth.currentUser) return;
+    try {
+        const token = await auth.currentUser.getIdToken();
+        await supabase.functions.invoke("create-game-upload", {
+            body: { action: "cleanup", paths },
+            headers: { Authorization: "Bearer " + token }
+        });
+    } catch (error) {
+        console.warn("Could not clean up incomplete upload objects:", error);
+    }
 }
 
 function initializeNavigation() {
@@ -453,8 +475,8 @@ function initializeNavigation() {
             setStatus($("#uploadStatus"), "The game icon image must be 10 MB or smaller.", true);
             return;
         }
-        if (file && file.size > 500 * 1024 * 1024) {
-            setStatus($("#uploadStatus"), "Package must be 500 MB or smaller.", true);
+        if (file && file.size > 50 * 1024 * 1024) {
+            setStatus($("#uploadStatus"), "Supabase Free storage supports files up to 50 MB. Use an external download link for larger packages.", true);
             return;
         }
 
@@ -466,59 +488,64 @@ function initializeNavigation() {
         if ($("#uploadProgressFill")) $("#uploadProgressFill").style.width = "0%";
         if ($("#uploadProgressText")) $("#uploadProgressText").textContent = "0%";
         setStatus($("#uploadStatus"), "Preparing your game files...");
+        let createdPaths = [];
         try {
-            const itemId = crypto.randomUUID();
-            setStatus($("#uploadStatus"), "Optimizing game icon...");
             const optimizedIcon = await makeUploadOptimizedIcon(iconFile);
-            const safeIconName = optimizedIcon.name.replace(/[^\w.-]/g, "_");
-            const iconRef = ref(storage, "published/" + user.uid + "/" + itemId + "/icon/" + safeIconName);
+            const uploadFiles = [{ kind: "icon", name: optimizedIcon.name, size: optimizedIcon.size }];
+            if (file) uploadFiles.push({ kind: "package", name: file.name, size: file.size });
+
+            setStatus($("#uploadStatus"), "Preparing secure Supabase upload...");
+            const signedBatch = await createSignedUploadBatch(uploadFiles);
+            createdPaths = signedBatch.uploads.map((item) => item.path);
+            const iconUpload = signedBatch.uploads.find((item) => item.kind === "icon");
+            const packageUpload = signedBatch.uploads.find((item) => item.kind === "package");
+            if (!iconUpload || (file && !packageUpload)) {
+                throw new Error("The upload service did not return all required upload permissions.");
+            }
 
             let iconProgress = 0;
             let packageProgress = 0;
-            const progressPanel = $("#uploadProgress");
+            const totalBytes = optimizedIcon.size + (file ? file.size : 0);
             const progressFill = $("#uploadProgressFill");
             const progressText = $("#uploadProgressText");
-            progressPanel?.classList.remove("hidden");
-            if (progressFill) progressFill.style.width = "0%";
-            if (progressText) progressText.textContent = "0%";
-
-            const totalBytes = optimizedIcon.size + (file ? file.size : 0);
             const updateCombinedProgress = () => {
                 const transferred = iconProgress + packageProgress;
                 const percent = totalBytes ? Math.min(100, Math.round((transferred / totalBytes) * 100)) : 0;
                 if (progressFill) progressFill.style.width = percent + "%";
                 if (progressText) progressText.textContent = percent + "%";
-                setStatus($("#uploadStatus"), "Uploading " + (file ? "game package and icon" : "game icon") + " — " + percent + "% complete. Please keep this page open.");
+                setStatus($("#uploadStatus"), "Uploading to Supabase — " + percent + "% complete.");
             };
 
-            setStatus($("#uploadStatus"), "Uploading game icon...");
-            const uploadedIconRef = await uploadFileWithProgress(optimizedIcon, iconRef, "Game icon", (bytes) => {
+            setStatus($("#uploadStatus"), "Uploading game icon to Supabase...");
+            const iconUrl = await uploadFileWithProgress(optimizedIcon, iconUpload, "Game icon", (bytes) => {
                 iconProgress = bytes;
                 updateCombinedProgress();
             });
-            const iconUrl = await getDownloadURL(uploadedIconRef);
 
             let packageDownloadUrl = externalDownloadUrl;
-            if (file) {
-                const safeName = file.name.replace(/[^\w.-]/g, "_");
-                const fileRef = ref(storage, "published/" + user.uid + "/" + itemId + "/package/" + safeName);
-                setStatus($("#uploadStatus"), "Uploading game package...");
-                const uploadedPackageRef = await uploadFileWithProgress(file, fileRef, "Game package", (bytes) => {
+            if (file && packageUpload) {
+                setStatus($("#uploadStatus"), "Uploading game package to Supabase...");
+                packageDownloadUrl = await uploadFileWithProgress(file, packageUpload, "Game package", (bytes) => {
                     packageProgress = bytes;
                     updateCombinedProgress();
                 });
-                packageDownloadUrl = await getDownloadURL(uploadedPackageRef);
             }
 
             if (progressFill) progressFill.style.width = "100%";
             if (progressText) progressText.textContent = "100%";
-            setStatus($("#uploadStatus"), "Saving your game to the UIKIMODDER library...");
-
+            setStatus($("#uploadStatus"), "Saving game details to the library...");
+            const itemId = signedBatch.itemId;
             await addDoc(collection(db, "games"), {
                 name, description, category, type: itemType,
                 downloadUrl: packageDownloadUrl,
-                packageStorageUrl: packageDownloadUrl,
-                imageUrl: iconUrl, iconFileName: iconFile.name, fileName: file?.name || "", fileSize: file?.size || 0,
+                packageStorageUrl: file ? packageDownloadUrl : "",
+                storageProvider: file ? "supabase" : "external",
+                storageBucket: file ? "uikimodder-files" : "",
+                storagePath: packageUpload?.path || "",
+                imageUrl: iconUrl,
+                iconFileName: iconFile.name,
+                fileName: file?.name || "",
+                fileSize: file?.size || 0,
                 active: true, published: true, createdBy: user.uid,
                 createdAt: serverTimestamp()
             });
@@ -530,12 +557,9 @@ function initializeNavigation() {
             await loadGames();
             renderApps();
         } catch (error) {
+            await cleanupSupabaseUploads(createdPaths);
             console.error("Game upload failed:", error);
-            const reason = error.code === "storage/unauthorized"
-                ? "Firebase Storage denied this upload. Check the deployed Storage rules and admin sign-in."
-                : error.code === "storage/canceled"
-                    ? "Upload was canceled or stalled. Check your connection and try again."
-                    : (error.message || error.code || "Unknown error");
+            const reason = error.message || error.code || "Unknown error";
             setStatus($("#uploadStatus"), "Upload failed: " + reason, true);
         } finally {
             button.disabled = false;
