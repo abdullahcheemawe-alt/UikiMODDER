@@ -1112,7 +1112,8 @@ function initializeAuthentication() {
         $("#bottomNav")?.classList.toggle("hidden", !loggedIn || $("#supportSection")?.classList.contains("hidden") === false);
         $("#accountWelcome")?.classList.toggle("hidden", !loggedIn);
         currentUserIsAdmin = await checkCurrentUserAdmin(user);
-        const isSuperAdmin = currentUserIsAdmin;
+        // Additional support admins can moderate the board; game uploads remain owner-only.
+        const isSuperAdmin = (user?.email || "").toLowerCase() === "abdullahcheemakv@gmail.com";
         const bottomNav = $("#bottomNav");
         $("#adminUploadNav")?.classList.toggle("hidden", !isSuperAdmin);
         bottomNav?.classList.toggle("admin-mode", isSuperAdmin);
