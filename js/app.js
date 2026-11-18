@@ -148,6 +148,7 @@ function setActiveBottomTab(view) {
 }
 
 function hideMainViews() {
+    if (typeof stopDirectMessageListeners === "function") stopDirectMessageListeners();
     if (supportPostsUnsubscribe) {
         supportPostsUnsubscribe();
         supportPostsUnsubscribe = null;
