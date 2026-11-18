@@ -20,7 +20,15 @@ import {
     collection,
     getDocs,
     addDoc,
-    serverTimestamp
+    serverTimestamp,
+    doc,
+    getDoc,
+    updateDoc,
+    arrayUnion,
+    onSnapshot,
+    query,
+    orderBy,
+    limit
 } from "https://www.gstatic.com/firebasejs/13.3.0/firebase-firestore.js";
 
 import { supabase, SUPABASE_PUBLISHABLE_KEY } from "./supabase.js?v=3";
@@ -39,6 +47,8 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 let pendingGameRecord = null;
+let supportPostsUnsubscribe = null;
+let currentUserIsAdmin = false;
 
 window.firebaseApp = app;
 window.firebaseAuth = auth;
@@ -251,6 +261,219 @@ function showAdminUpload() {
     $("#bottomNav")?.classList.remove("hidden");
     setActiveBottomTab("upload");
     window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showSupportBoard() {
+    hideMainViews();
+    $("#supportSection")?.classList.remove("hidden");
+    $("#bottomNav")?.classList.add("hidden");
+    $("#supportGuestPanel")?.classList.toggle("hidden", Boolean(auth.currentUser));
+    $("#supportMemberArea")?.classList.toggle("hidden", !auth.currentUser);
+    loadSupportBoard();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function getSupportAuthorName(user) {
+    return String(user?.displayName || user?.email?.split("@")[0] || "UIKIMODDER User")
+        .replace(/[<>]/g, "").slice(0, 40);
+}
+
+function renderSupportBoard(posts) {
+    const feed = $("#supportFeed");
+    const count = $("#supportPostCount");
+    if (!feed) return;
+    if (count) count.textContent = posts.length + (posts.length === 1 ? " POST" : " POSTS");
+    if (!posts.length) {
+        feed.innerHTML = '<div class="support-empty"><span>✦</span><h3>No discussions yet</h3><p>Be the first to report an issue or share feedback with the UIKIMODDER community.</p></div>';
+        return;
+    }
+
+    feed.innerHTML = posts.map((post) => {
+        const replies = Array.isArray(post.replies) ? post.replies : [];
+        const status = post.status === "resolved" ? "Resolved" : "Open";
+        const replyMarkup = replies.map((reply) => {
+            const admin = reply.role === "admin";
+            return '<div class="support-reply ' + (admin ? "support-admin-reply" : "") + '">' +
+                '<div class="support-reply-meta"><strong>' + escapeHTML(reply.authorName || "Community member") + '</strong>' +
+                (admin ? '<span class="support-role-badge">OWNER / ADMIN</span>' : "") +
+                '<time>' + escapeHTML(reply.createdAtLabel || "") + '</time></div>' +
+                '<p>' + escapeHTML(reply.message || "") + '</p></div>';
+        }).join("");
+        const adminControls = currentUserIsAdmin
+            ? '<button class="support-resolve-btn" type="button" data-support-action="toggle-status" data-post-id="' + escapeHTML(post.id) + '">' +
+                (post.status === "resolved" ? "REOPEN ISSUE" : "MARK RESOLVED") + '</button>'
+            : "";
+        const replyForm = auth.currentUser
+            ? '<form class="support-reply-form" data-post-id="' + escapeHTML(post.id) + '">' +
+                '<input name="replyMessage" type="text" maxlength="400" placeholder="Write a helpful reply..." required>' +
+                '<button type="submit" aria-label="Send reply">↗</button></form>'
+            : '<p class="support-reply-signin">Sign in to join this discussion.</p>';
+        return '<article class="support-post-card" data-post-id="' + escapeHTML(post.id) + '">' +
+            '<div class="support-post-topline"><span class="support-topic">' + escapeHTML(post.category || "Other") + '</span>' +
+            '<span class="support-state ' + (status === "Resolved" ? "is-resolved" : "") + '">' + status + '</span></div>' +
+            '<h3>' + escapeHTML(post.title || "Support request") + '</h3>' +
+            '<p class="support-post-message">' + escapeHTML(post.message || "") + '</p>' +
+            '<div class="support-post-meta"><span>Posted by <strong>' + escapeHTML(post.authorName || "Community member") + '</strong></span>' +
+            '<time>' + escapeHTML(post.createdAtLabel || "") + '</time></div>' +
+            (replies.length ? '<div class="support-replies"><h4>Discussion <span>' + replies.length + '</span></h4>' + replyMarkup + '</div>' : '<div class="support-no-replies">No replies yet — start the conversation.</div>') +
+            '<div class="support-post-actions">' + adminControls + '</div>' + replyForm + '</article>';
+    }).join("");
+}
+
+function formatSupportDate(value) {
+    if (!value) return "Just now";
+    const date = value.toDate ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return "Just now";
+    return date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+}
+
+function loadSupportBoard() {
+    const feed = $("#supportFeed");
+    if (!feed) return;
+    if (supportPostsUnsubscribe) {
+        supportPostsUnsubscribe();
+        supportPostsUnsubscribe = null;
+    }
+    feed.innerHTML = '<div class="support-empty"><span class="support-loading-spinner"></span><h3>Loading community board</h3><p>Fetching the latest reports and replies...</p></div>';
+
+    const postsQuery = query(collection(db, "supportPosts"), orderBy("createdAt", "desc"), limit(50));
+    supportPostsUnsubscribe = onSnapshot(postsQuery, (snapshot) => {
+        const posts = snapshot.docs.map((entry) => {
+            const data = entry.data();
+            return {
+                id: entry.id,
+                ...data,
+                createdAtLabel: formatSupportDate(data.createdAt),
+                replies: (Array.isArray(data.replies) ? data.replies : []).map((reply) => ({
+                    ...reply,
+                    createdAtLabel: formatSupportDate(reply.createdAt)
+                }))
+            };
+        });
+        renderSupportBoard(posts);
+    }, (error) => {
+        console.error("Support board could not load:", error);
+        feed.innerHTML = '<div class="support-empty"><span>!</span><h3>Support board unavailable</h3><p>Check the Firestore supportPosts read rules and internet connection, then refresh this page.</p></div>';
+    });
+}
+
+async function checkCurrentUserAdmin(user) {
+    if (!user) return false;
+    if ((user.email || "").toLowerCase() === "abdullahcheemakv@gmail.com") return true;
+    try {
+        const adminDoc = await getDoc(doc(db, "admins", user.uid));
+        return adminDoc.exists() && adminDoc.data()?.active !== false;
+    } catch (error) {
+        console.warn("Could not read admin membership:", error);
+        return false;
+    }
+}
+
+function initializeSupportBoard() {
+    $("#supportOpen")?.addEventListener("click", showSupportBoard);
+    $("#supportBackBtn")?.addEventListener("click", () => {
+        if (auth.currentUser) showStore();
+        else {
+            $("#supportSection")?.classList.add("hidden");
+            $(".hero-section")?.classList.remove("hidden");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+    });
+    $("#supportSignInBtn")?.addEventListener("click", () => openAuthModal("signin"));
+
+    $("#supportReportForm")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const user = auth.currentUser;
+        if (!user) {
+            openAuthModal("signin");
+            return;
+        }
+        const title = $("#supportTitle")?.value.trim() || "";
+        const category = $("#supportCategory")?.value || "Other";
+        const message = $("#supportMessage")?.value.trim() || "";
+        const button = $("#supportSubmitBtn");
+        if (title.length < 4 || message.length < 10) {
+            setStatus($("#supportStatus"), "Please add a clear title and at least 10 characters describing the issue.", true);
+            return;
+        }
+        button.disabled = true;
+        button.textContent = "POSTING...";
+        setStatus($("#supportStatus"), "Publishing your report...");
+        try {
+            await addDoc(collection(db, "supportPosts"), {
+                title, category, message,
+                authorUid: user.uid,
+                authorName: getSupportAuthorName(user),
+                status: "open",
+                replies: [],
+                createdAt: serverTimestamp()
+            });
+            event.currentTarget.reset();
+            setStatus($("#supportStatus"), "Your report is now visible to the community.");
+        } catch (error) {
+            console.error("Could not publish support report:", error);
+            setStatus($("#supportStatus"), "Could not post this report. Check Firestore supportPosts create rules and try again.", true);
+        } finally {
+            button.disabled = false;
+            button.textContent = "POST REPORT ↗";
+        }
+    });
+
+    $("#supportFeed")?.addEventListener("submit", async (event) => {
+        const form = event.target.closest(".support-reply-form");
+        if (!form) return;
+        event.preventDefault();
+        const user = auth.currentUser;
+        if (!user) {
+            openAuthModal("signin");
+            return;
+        }
+        const input = form.elements.replyMessage;
+        const message = String(input?.value || "").trim();
+        const postId = form.dataset.postId;
+        const send = form.querySelector("button");
+        if (!message || message.length > 400 || !postId) return;
+        send.disabled = true;
+        try {
+            await updateDoc(doc(db, "supportPosts", postId), {
+                replies: arrayUnion({
+                    message,
+                    authorUid: user.uid,
+                    authorName: getSupportAuthorName(user),
+                    role: currentUserIsAdmin ? "admin" : "member",
+                    createdAt: new Date().toISOString()
+                }),
+                updatedAt: serverTimestamp()
+            });
+            input.value = "";
+        } catch (error) {
+            console.error("Could not send support reply:", error);
+            alert("Your reply could not be sent. Please check the Firestore support rules and try again.");
+        } finally {
+            send.disabled = false;
+        }
+    });
+
+    $("#supportFeed")?.addEventListener("click", async (event) => {
+        const button = event.target.closest('[data-support-action="toggle-status"]');
+        if (!button || !currentUserIsAdmin) return;
+        const postId = button.dataset.postId;
+        const card = button.closest(".support-post-card");
+        const state = card?.querySelector(".support-state");
+        const isResolved = state?.textContent.trim() === "Resolved";
+        button.disabled = true;
+        try {
+            await updateDoc(doc(db, "supportPosts", postId), {
+                status: isResolved ? "open" : "resolved",
+                updatedAt: serverTimestamp()
+            });
+        } catch (error) {
+            console.error("Could not update support status:", error);
+            alert("Only an authorized owner/admin can update issue status.");
+        } finally {
+            button.disabled = false;
+        }
+    });
 }
 
 function showProfile(user = auth.currentUser) {
@@ -776,6 +999,7 @@ function initializeNavigation() {
         link.addEventListener("click", (event) => {
             event.preventDefault();
             hideMainViews();
+            $("#supportSection")?.classList.add("hidden");
             $("#bottomNav")?.classList.add("hidden");
             $(".hero-section")?.classList.remove("hidden");
             $(".hero-section")?.scrollIntoView({ behavior: "smooth" });
@@ -855,18 +1079,22 @@ function initializeAuthentication() {
         }
     });
 
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
         const loggedIn = Boolean(user);
         $("#loginOpen")?.classList.toggle("hidden", loggedIn);
         $("#signupOpen")?.classList.toggle("hidden", loggedIn);
         $("#logoutBtn")?.classList.toggle("hidden", true);
-        $("#bottomNav")?.classList.toggle("hidden", !loggedIn);
+        $("#bottomNav")?.classList.toggle("hidden", !loggedIn || $("#supportSection")?.classList.contains("hidden") === false);
         $("#accountWelcome")?.classList.toggle("hidden", !loggedIn);
-        const isSuperAdmin = (user?.email || "").toLowerCase() === "abdullahcheemakv@gmail.com";
+        currentUserIsAdmin = await checkCurrentUserAdmin(user);
+        const isSuperAdmin = currentUserIsAdmin;
         const bottomNav = $("#bottomNav");
         $("#adminUploadNav")?.classList.toggle("hidden", !isSuperAdmin);
         bottomNav?.classList.toggle("admin-mode", isSuperAdmin);
 
+        $("#supportGuestPanel")?.classList.toggle("hidden", loggedIn);
+        $("#supportMemberArea")?.classList.toggle("hidden", !loggedIn);
+        if (!$("#supportSection")?.classList.contains("hidden")) renderSupportBoard([]);
         if (user) {
             console.log("Signed in:", user.email);
             document.documentElement.dataset.auth = "signed-in";
@@ -886,6 +1114,7 @@ function initializeAuthentication() {
 
 function initializeWebsite() {
     initializeNavigation();
+    initializeSupportBoard();
     initializeAuthentication();
     initializeGameControls();
 
