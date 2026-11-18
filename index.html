@@ -17,7 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="style.css?v=24">
+    <link rel="stylesheet" href="style.css?v=25">
 </head>
 
 <body>
@@ -56,7 +56,6 @@
             <span id="accountWelcome" class="account-welcome hidden" aria-live="polite"></span>
 
             <button id="supportOpen" class="support-open-btn" type="button" aria-label="Open community support">
-                <span class="support-open-icon" aria-hidden="true">✉</span>
                 <span class="support-button-label">Contact Owner</span>
             </button>
 
@@ -542,62 +541,65 @@
         </section>
     </section>
 
-    <!-- COMMUNITY SUPPORT / BUG REPORT BOARD -->
-    <section id="supportSection" class="support-section hidden">
-        <div class="support-topbar">
-            <button id="supportBackBtn" class="support-back-btn" type="button">← Back to Games</button>
-            <span class="support-live-badge"><i></i> COMMUNITY SUPPORT</span>
+    <!-- PRIVATE CONTACT OWNER MESSAGES -->
+    <section id="supportSection" class="dm-section hidden">
+        <div class="dm-topbar">
+            <button id="supportBackBtn" class="dm-back-btn" type="button">← Back</button>
+            <div class="dm-topbar-title">
+                <strong id="dmTopTitle">Contact Owner</strong>
+                <span id="dmTopSubtitle">Private support conversation</span>
+            </div>
+            <span class="dm-secure-label">PRIVATE</span>
         </div>
 
-        <div class="support-hero">
-            <span class="section-label">UIKIMODDER HELP CENTER</span>
-            <h1>Contact Your <span class="gradient-text">Owner.</span></h1>
-            <p>Report a bug, share feedback, or join the public support discussion. The community can see posts and replies.</p>
+        <div id="dmSignInPanel" class="dm-signin-panel hidden">
+            <span class="dm-eyebrow">UIKIMODDER SUPPORT</span>
+            <h1>Talk to the <span class="gradient-text">Owner.</span></h1>
+            <p>Sign in to send a private message to the UIKIMODDER owner. Your conversation is only visible to you and authorized admins.</p>
+            <button id="dmSignInBtn" type="button">SIGN IN TO MESSAGE</button>
         </div>
 
-        <div class="support-notice">
-            <span class="support-notice-icon">ⓘ</span>
-            <p>Keep the discussion respectful. Never post passwords, email addresses, phone numbers, private information, or account details. This is a public board, not private messaging.</p>
-        </div>
-
-        <div id="supportGuestPanel" class="support-guest-panel hidden">
-            <h3>Sign in to join the discussion</h3>
-            <p>You can browse the support page, but you need a UIKIMODDER account to post or reply.</p>
-            <button id="supportSignInBtn" type="button">SIGN IN TO CONTINUE →</button>
-        </div>
-
-        <div id="supportMemberArea" class="support-member-area hidden">
-            <form id="supportReportForm" class="support-compose-card">
-                <div class="support-compose-heading">
-                    <div><span class="section-label">NEED A HAND?</span><h2>Report a <span class="gradient-text">Problem.</span></h2></div>
-                    <span class="support-compose-icon">＋</span>
+        <div id="dmAdminInbox" class="dm-admin-inbox hidden">
+            <aside class="dm-inbox-list">
+                <div class="dm-inbox-heading">
+                    <div><span class="dm-eyebrow">PRIVATE MESSAGES</span><h2>Inbox</h2></div>
+                    <span id="dmInboxCount" class="dm-count-pill">0</span>
                 </div>
-                <label for="supportTitle">Issue title</label>
-                <input id="supportTitle" type="text" maxlength="90" placeholder="Example: Game download is not starting" required>
-                <label for="supportCategory">Topic</label>
-                <select id="supportCategory" required>
-                    <option value="Bug Report">Bug Report</option>
-                    <option value="Download Issue">Download Issue</option>
-                    <option value="Account Help">Account Help</option>
-                    <option value="Suggestion">Suggestion</option>
-                    <option value="Other">Other</option>
-                </select>
-                <label for="supportMessage">Describe the issue</label>
-                <textarea id="supportMessage" rows="4" maxlength="700" placeholder="Tell the owner and community what happened. Do not include private account details." required></textarea>
-                <div class="support-compose-footer">
-                    <small>Maximum 700 characters</small>
-                    <button id="supportSubmitBtn" type="submit">POST REPORT ↗</button>
+                <div id="dmConversationList" class="dm-conversation-list">
+                    <div class="dm-list-empty">Your inbox will appear here.</div>
                 </div>
-                <p id="supportStatus" class="support-status" role="status" aria-live="polite"></p>
+            </aside>
+            <section class="dm-chat-panel">
+                <div id="dmAdminChatHeader" class="dm-chat-header">
+                    <div class="dm-avatar">U</div>
+                    <div><strong>Select a conversation</strong><span>Private messages from your users</span></div>
+                </div>
+                <div id="dmAdminPinned" class="dm-pinned-banner hidden"></div>
+                <div id="dmAdminMessages" class="dm-messages">
+                    <div class="dm-chat-empty"><strong>Your messages, in one place.</strong><span>Choose a conversation to read and reply.</span></div>
+                </div>
+                <form id="dmAdminReplyForm" class="dm-compose hidden">
+                    <input id="dmAdminReplyInput" type="text" maxlength="1500" placeholder="Write a private reply..." autocomplete="off" required>
+                    <button type="submit" aria-label="Send reply">Send</button>
+                </form>
+            </section>
+        </div>
+
+        <div id="dmUserChat" class="dm-user-chat hidden">
+            <div class="dm-chat-header">
+                <div class="dm-avatar">U</div>
+                <div><strong>UIKIMODDER Owner</strong><span>Private support • Replies appear here</span></div>
+                <span class="dm-online-dot" aria-label="Support inbox"></span>
+            </div>
+            <div id="dmUserPinned" class="dm-pinned-banner hidden"></div>
+            <div id="dmUserMessages" class="dm-messages">
+                <div class="dm-chat-empty"><strong>How can we help?</strong><span>Send a private message to the owner about a bug, download issue, or suggestion.</span></div>
+            </div>
+            <form id="dmUserMessageForm" class="dm-compose">
+                <input id="dmUserMessageInput" type="text" maxlength="1500" placeholder="Message..." autocomplete="off" required>
+                <button type="submit" aria-label="Send message">Send</button>
             </form>
-        </div>
-
-        <div class="support-feed-heading">
-            <div><span class="section-label">OPEN DISCUSSION</span><h2>Community <span class="gradient-text">Board.</span></h2></div>
-            <span id="supportPostCount" class="support-post-count">0 POSTS</span>
-        </div>
-        <div id="supportFeed" class="support-feed" aria-live="polite">
-            <div class="support-empty"><span>✦</span><h3>Support board</h3><p>Sign in to load community reports and replies.</p></div>
+            <p id="dmUserStatus" class="dm-status" role="status" aria-live="polite"></p>
         </div>
     </section>
 
@@ -623,6 +625,6 @@
     <!-- JAVASCRIPT -->
     
 
-    <script type="module" src="./js/app.js?v=22"></script>
+    <script type="module" src="./js/app.js?v=23"></script>
 </body>
 </html>
