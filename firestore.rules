@@ -10,7 +10,8 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth != null
         && (isOwner()
-          || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+          || (exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+            && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active == true));
     }
 
     match /games/{gameId} {
@@ -36,7 +37,7 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly([
           'title', 'category', 'message', 'authorUid',
-          'authorName', 'status', 'replies', 'createdAt'
+          'authorName', 'status', 'createdAt'
         ])
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.authorName is string
@@ -51,35 +52,32 @@ service cloud.firestore {
           'Bug Report', 'Download Issue', 'Account Help', 'Suggestion', 'Other'
         ]
         && request.resource.data.status == 'open'
-        && request.resource.data.replies is list
-        && request.resource.data.replies.size() == 0;
+        ;
 
-      allow update: if request.auth != null && (
-        (
-          isAdmin()
-          && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'updatedAt'])
-          && request.resource.data.status in ['open', 'resolved']
-        )
-        ||
-        (
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['replies', 'updatedAt'])
-          && request.resource.data.status == resource.data.status
-          && resource.data.replies is list
-          && request.resource.data.replies is list
-          && request.resource.data.replies.size() == resource.data.replies.size() + 1
-          && request.resource.data.replies[resource.data.replies.size()].authorUid == request.auth.uid
-          && request.resource.data.replies[resource.data.replies.size()].authorName is string
-          && request.resource.data.replies[resource.data.replies.size()].authorName.size() <= 40
-          && request.resource.data.replies[resource.data.replies.size()].message is string
-          && request.resource.data.replies[resource.data.replies.size()].message.size() >= 1
-          && request.resource.data.replies[resource.data.replies.size()].message.size() <= 400
-          && request.resource.data.replies[resource.data.replies.size()].role == (isAdmin() ? 'admin' : 'member')
-        )
-      );
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status in ['open', 'resolved'];
 
       allow delete: if isAdmin();
+
+      match /replies/{replyId} {
+        allow get, list: if true;
+
+        allow create: if request.auth != null
+          && request.resource.data.keys().hasOnly([
+            'message', 'authorUid', 'authorName', 'role', 'createdAt'
+          ])
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorName is string
+          && request.resource.data.authorName.size() <= 40
+          && request.resource.data.message is string
+          && request.resource.data.message.size() >= 1
+          && request.resource.data.message.size() <= 400
+          && request.resource.data.role == (isAdmin() ? 'admin' : 'member');
+
+        allow update, delete: if isAdmin();
+      }
     }
 
     // All unrelated collections remain closed by default.
