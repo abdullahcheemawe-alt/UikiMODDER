@@ -51,6 +51,7 @@ let supportPostsUnsubscribe = null;
 let supportReplyUnsubscribers = [];
 let supportRepliesByPost = {};
 let currentUserIsAdmin = false;
+let dmInboxUnsubscribe = null;
 let dmConversationUnsubscribe = null;
 let dmMessagesUnsubscribe = null;
 let dmActiveConversationId = null;
@@ -279,8 +280,10 @@ function showAdminUpload() {
 }
 
 function stopDirectMessageListeners() {
+    if (dmInboxUnsubscribe) dmInboxUnsubscribe();
     if (dmConversationUnsubscribe) dmConversationUnsubscribe();
     if (dmMessagesUnsubscribe) dmMessagesUnsubscribe();
+    dmInboxUnsubscribe = null;
     dmConversationUnsubscribe = null;
     dmMessagesUnsubscribe = null;
     dmActiveConversationId = null;
@@ -397,7 +400,7 @@ function loadOwnerInbox() {
     const list = $("#dmConversationList");
     if (list) list.innerHTML = '<div class="dm-list-empty">Loading private messages…</div>';
     const inboxQuery = query(collection(db, "privateConversations"), orderBy("lastMessageAt", "desc"), limit(100));
-    dmConversationUnsubscribe = onSnapshot(inboxQuery, (snapshot) => {
+    dmInboxUnsubscribe = onSnapshot(inboxQuery, (snapshot) => {
         dmConversations = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
         $("#dmInboxCount").textContent = String(dmConversations.length);
         if (!dmConversations.length) {
