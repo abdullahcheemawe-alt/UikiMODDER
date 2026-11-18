@@ -289,6 +289,24 @@ function stopDirectMessageListeners() {
     dmActiveConversationId = null;
 }
 
+function getSupportAuthorName(user) {
+    const rawName = String(user?.displayName || user?.email?.split("@")[0] || "UIKIMODDER Member").trim();
+    return rawName.slice(0, 40) || "UIKIMODDER Member";
+}
+
+async function checkCurrentUserAdmin(user) {
+    if (!user) return false;
+    const email = String(user.email || "").toLowerCase();
+    if (email === "abdullahcheemakv@gmail.com") return true;
+    try {
+        const adminSnapshot = await getDoc(doc(db, "admins", user.uid));
+        return adminSnapshot.exists() && adminSnapshot.data()?.active === true;
+    } catch (error) {
+        console.warn("Admin role could not be verified:", error);
+        return false;
+    }
+}
+
 function showSupportBoard() {
     hideMainViews();
     $("#supportSection")?.classList.remove("hidden");
@@ -1146,36 +1164,39 @@ function initializeAuthentication() {
     });
 
     onAuthStateChanged(auth, async (user) => {
+        const supportIsOpen = !$("#supportSection")?.classList.contains("hidden");
         const loggedIn = Boolean(user);
+
         $("#loginOpen")?.classList.toggle("hidden", loggedIn);
         $("#signupOpen")?.classList.toggle("hidden", loggedIn);
         $("#logoutBtn")?.classList.toggle("hidden", true);
-        $("#bottomNav")?.classList.toggle("hidden", !loggedIn || $("#supportSection")?.classList.contains("hidden") === false);
+        $("#bottomNav")?.classList.toggle("hidden", !loggedIn || supportIsOpen);
         $("#accountWelcome")?.classList.toggle("hidden", !loggedIn);
+
         currentUserIsAdmin = await checkCurrentUserAdmin(user);
-        // Additional support admins can moderate the board; game uploads remain owner-only.
         const isSuperAdmin = (user?.email || "").toLowerCase() === "abdullahcheemakv@gmail.com";
         const bottomNav = $("#bottomNav");
         $("#adminUploadNav")?.classList.toggle("hidden", !isSuperAdmin);
         bottomNav?.classList.toggle("admin-mode", isSuperAdmin);
 
-        $("#dmSignInPanel")?.classList.toggle("hidden", loggedIn);
-        $("#dmAdminInbox")?.classList.toggle("hidden", !(loggedIn && currentUserIsAdmin));
-        $("#dmUserChat")?.classList.toggle("hidden", !(loggedIn && !currentUserIsAdmin));
-        if (!$("#supportSection")?.classList.contains("hidden")) showSupportBoard();
         if (user) {
             console.log("Signed in:", user.email);
             document.documentElement.dataset.auth = "signed-in";
             const label = $("#accountWelcome");
             if (label) label.textContent = "Welcome back, " + (user.displayName || user.email?.split("@")[0] || "Gamer");
-            showStore(false);
+            if (supportIsOpen) showSupportBoard();
+            else showStore(false);
         } else {
             bottomNav?.classList.remove("admin-mode");
             document.documentElement.dataset.auth = "signed-out";
             allGames = [];
-            hideMainViews();
-            $("#bottomNav")?.classList.add("hidden");
-            $(".hero-section")?.classList.remove("hidden");
+            if (supportIsOpen) {
+                showSupportBoard();
+            } else {
+                hideMainViews();
+                $("#bottomNav")?.classList.add("hidden");
+                $(".hero-section")?.classList.remove("hidden");
+            }
         }
     });
 }
