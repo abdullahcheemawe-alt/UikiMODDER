@@ -149,6 +149,7 @@ function hideMainViews() {
     $("#profileSection")?.classList.add("hidden");
     $("#adminSection")?.classList.add("hidden");
     $("#itemDetailSection")?.classList.add("hidden");
+    $("#supportSection")?.classList.add("hidden");
 }
 
 function showStore(scroll = true) {
