@@ -2529,8 +2529,8 @@ body { padding-bottom: 92px; }
 }
 
 
-/* Prevent the signed-out landing screen from flashing while Firebase
-   restores the visitor's saved authentication session. */
+/* Keep the page content hidden only while Firebase restores the saved
+   session. No visible loader, text, spinner, or pseudo-element is shown. */
 html[data-auth="checking"] .navbar,
 html[data-auth="checking"] .hero-section,
 html[data-auth="checking"] #storeSection,
@@ -2541,44 +2541,4 @@ html[data-auth="checking"] #itemDetailSection,
 html[data-auth="checking"] #bottomNav,
 html[data-auth="checking"] #authModal {
     visibility: hidden !important;
-}
-html[data-auth="checking"] body::before {
-    content: "UIKIMODDER\\A Loading your gaming universe...";
-    white-space: pre;
-    position: fixed;
-    inset: 0;
-    z-index: 99998;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-top: 12px;
-    background: #080b1c;
-    color: #dce7ff;
-    font-family: "Outfit", sans-serif;
-    font-size: 17px;
-    font-weight: 700;
-    letter-spacing: .35px;
-    text-align: center;
-}
-html[data-auth="checking"] body::after {
-    content: "";
-    position: fixed;
-    z-index: 99999;
-    top: calc(50% - 42px);
-    left: calc(50% - 15px);
-    width: 30px;
-    height: 30px;
-    border: 3px solid rgba(0, 235, 255, .16);
-    border-top-color: #00eaff;
-    border-right-color: #8b72ff;
-    border-radius: 50%;
-    animation: uikiAuthRestoreSpin .8s linear infinite;
-}
-@keyframes uikiAuthRestoreSpin {
-    to { transform: rotate(360deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-    html[data-auth="checking"] body::after {
-        animation-duration: 2.5s;
-    }
 }
