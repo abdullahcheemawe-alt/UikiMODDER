@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://abdullahcheemawe-alt.github.io/UikiMODDER/sitemap.xml
