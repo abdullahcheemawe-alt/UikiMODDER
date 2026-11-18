@@ -391,7 +391,9 @@ async function loadUserConversation(user) {
 }
 
 function loadOwnerInbox() {
+    const previouslySelected = dmActiveConversationId;
     stopDirectMessageListeners();
+    dmActiveConversationId = previouslySelected;
     const list = $("#dmConversationList");
     if (list) list.innerHTML = '<div class="dm-list-empty">Loading private messages…</div>';
     const inboxQuery = query(collection(db, "privateConversations"), orderBy("lastMessageAt", "desc"), limit(100));
