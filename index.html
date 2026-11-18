@@ -17,7 +17,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- CSS -->
-    <link rel="stylesheet" href="style.css?v=22">
+    <link rel="stylesheet" href="style.css?v=23">
 </head>
 
 <body>
@@ -54,6 +54,11 @@
             </button>
 
             <span id="accountWelcome" class="account-welcome hidden" aria-live="polite"></span>
+
+            <button id="supportOpen" class="support-open-btn" type="button" aria-label="Open community support">
+                <span class="support-open-icon" aria-hidden="true">✉</span>
+                <span class="support-button-label">Contact Owner</span>
+            </button>
 
 </div>
 
@@ -535,6 +540,65 @@
             <div class="profile-detail"><span>Account status</span><strong><i class="online-dot"></i> Active</strong></div>
             <button id="profileSignout" class="profile-signout" type="button">↗ &nbsp; Sign Out</button>
         </section>
+    </section>
+
+    <!-- COMMUNITY SUPPORT / BUG REPORT BOARD -->
+    <section id="supportSection" class="support-section hidden">
+        <div class="support-topbar">
+            <button id="supportBackBtn" class="support-back-btn" type="button">← Back to Games</button>
+            <span class="support-live-badge"><i></i> COMMUNITY SUPPORT</span>
+        </div>
+
+        <div class="support-hero">
+            <span class="section-label">UIKIMODDER HELP CENTER</span>
+            <h1>Contact Your <span class="gradient-text">Owner.</span></h1>
+            <p>Report a bug, share feedback, or join the public support discussion. The community can see posts and replies.</p>
+        </div>
+
+        <div class="support-notice">
+            <span class="support-notice-icon">ⓘ</span>
+            <p>Keep the discussion respectful. Never post passwords, email addresses, phone numbers, private information, or account details. This is a public board, not private messaging.</p>
+        </div>
+
+        <div id="supportGuestPanel" class="support-guest-panel hidden">
+            <h3>Sign in to join the discussion</h3>
+            <p>You can browse the support page, but you need a UIKIMODDER account to post or reply.</p>
+            <button id="supportSignInBtn" type="button">SIGN IN TO CONTINUE →</button>
+        </div>
+
+        <div id="supportMemberArea" class="support-member-area hidden">
+            <form id="supportReportForm" class="support-compose-card">
+                <div class="support-compose-heading">
+                    <div><span class="section-label">NEED A HAND?</span><h2>Report a <span class="gradient-text">Problem.</span></h2></div>
+                    <span class="support-compose-icon">＋</span>
+                </div>
+                <label for="supportTitle">Issue title</label>
+                <input id="supportTitle" type="text" maxlength="90" placeholder="Example: Game download is not starting" required>
+                <label for="supportCategory">Topic</label>
+                <select id="supportCategory" required>
+                    <option value="Bug Report">Bug Report</option>
+                    <option value="Download Issue">Download Issue</option>
+                    <option value="Account Help">Account Help</option>
+                    <option value="Suggestion">Suggestion</option>
+                    <option value="Other">Other</option>
+                </select>
+                <label for="supportMessage">Describe the issue</label>
+                <textarea id="supportMessage" rows="4" maxlength="700" placeholder="Tell the owner and community what happened. Do not include private account details." required></textarea>
+                <div class="support-compose-footer">
+                    <small>Maximum 700 characters</small>
+                    <button id="supportSubmitBtn" type="submit">POST REPORT ↗</button>
+                </div>
+                <p id="supportStatus" class="support-status" role="status" aria-live="polite"></p>
+            </form>
+        </div>
+
+        <div class="support-feed-heading">
+            <div><span class="section-label">OPEN DISCUSSION</span><h2>Community <span class="gradient-text">Board.</span></h2></div>
+            <span id="supportPostCount" class="support-post-count">0 POSTS</span>
+        </div>
+        <div id="supportFeed" class="support-feed" aria-live="polite">
+            <div class="support-empty"><span>✦</span><h3>Support board</h3><p>Sign in to load community reports and replies.</p></div>
+        </div>
     </section>
 
     <!-- MOBILE / APP-STYLE BOTTOM NAVIGATION -->
