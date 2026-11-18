@@ -24,7 +24,6 @@ import {
     doc,
     getDoc,
     updateDoc,
-    arrayUnion,
     onSnapshot,
     query,
     orderBy,
@@ -48,6 +47,8 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 let pendingGameRecord = null;
 let supportPostsUnsubscribe = null;
+let supportReplyUnsubscribers = [];
+let supportRepliesByPost = {};
 let currentUserIsAdmin = false;
 
 window.firebaseApp = app;
@@ -289,7 +290,7 @@ function renderSupportBoard(posts) {
     }
 
     feed.innerHTML = posts.map((post) => {
-        const replies = Array.isArray(post.replies) ? post.replies : [];
+        const replies = supportRepliesByPost[post.id] || [];
         const status = post.status === "resolved" ? "Resolved" : "Open";
         const replyMarkup = replies.map((reply) => {
             const admin = reply.role === "admin";
@@ -334,23 +335,42 @@ function loadSupportBoard() {
         supportPostsUnsubscribe();
         supportPostsUnsubscribe = null;
     }
+    supportReplyUnsubscribers.forEach((unsubscribe) => unsubscribe());
+    supportReplyUnsubscribers = [];
+    supportRepliesByPost = {};
     feed.innerHTML = '<div class="support-empty"><span class="support-loading-spinner"></span><h3>Loading community board</h3><p>Fetching the latest reports and replies...</p></div>';
 
     const postsQuery = query(collection(db, "supportPosts"), orderBy("createdAt", "desc"), limit(50));
     supportPostsUnsubscribe = onSnapshot(postsQuery, (snapshot) => {
         const posts = snapshot.docs.map((entry) => {
             const data = entry.data();
-            return {
-                id: entry.id,
-                ...data,
-                createdAtLabel: formatSupportDate(data.createdAt),
-                replies: (Array.isArray(data.replies) ? data.replies : []).map((reply) => ({
-                    ...reply,
-                    createdAtLabel: formatSupportDate(reply.createdAt)
-                }))
-            };
+            return { id: entry.id, ...data, createdAtLabel: formatSupportDate(data.createdAt) };
         });
-        renderSupportBoard(posts);
+        supportReplyUnsubscribers.forEach((unsubscribe) => unsubscribe());
+        supportReplyUnsubscribers = [];
+        supportRepliesByPost = {};
+        if (!posts.length) {
+            renderSupportBoard([]);
+            return;
+        }
+        let readyCount = 0;
+        posts.forEach((post) => {
+            const repliesQuery = query(collection(db, "supportPosts", post.id, "replies"), orderBy("createdAt", "asc"));
+            const unsubscribe = onSnapshot(repliesQuery, (replySnapshot) => {
+                supportRepliesByPost[post.id] = replySnapshot.docs.map((replyDoc) => {
+                    const reply = replyDoc.data();
+                    return { ...reply, createdAtLabel: formatSupportDate(reply.createdAt) };
+                });
+                readyCount += 1;
+                if (readyCount >= posts.length) renderSupportBoard(posts);
+            }, (replyError) => {
+                console.error("Could not load replies for support post:", post.id, replyError);
+                supportRepliesByPost[post.id] = [];
+                readyCount += 1;
+                if (readyCount >= posts.length) renderSupportBoard(posts);
+            });
+            supportReplyUnsubscribers.push(unsubscribe);
+        });
     }, (error) => {
         console.error("Support board could not load:", error);
         feed.innerHTML = '<div class="support-empty"><span>!</span><h3>Support board unavailable</h3><p>Check the Firestore supportPosts read rules and internet connection, then refresh this page.</p></div>';
@@ -435,15 +455,12 @@ function initializeSupportBoard() {
         if (!message || message.length > 400 || !postId) return;
         send.disabled = true;
         try {
-            await updateDoc(doc(db, "supportPosts", postId), {
-                replies: arrayUnion({
-                    message,
-                    authorUid: user.uid,
-                    authorName: getSupportAuthorName(user),
-                    role: currentUserIsAdmin ? "admin" : "member",
-                    createdAt: new Date().toISOString()
-                }),
-                updatedAt: serverTimestamp()
+            await addDoc(collection(db, "supportPosts", postId, "replies"), {
+                message,
+                authorUid: user.uid,
+                authorName: getSupportAuthorName(user),
+                role: currentUserIsAdmin ? "admin" : "member",
+                createdAt: serverTimestamp()
             });
             input.value = "";
         } catch (error) {
@@ -1094,7 +1111,7 @@ function initializeAuthentication() {
 
         $("#supportGuestPanel")?.classList.toggle("hidden", loggedIn);
         $("#supportMemberArea")?.classList.toggle("hidden", !loggedIn);
-        if (!$("#supportSection")?.classList.contains("hidden")) renderSupportBoard([]);
+        if (!$("#supportSection")?.classList.contains("hidden")) loadSupportBoard();
         if (user) {
             console.log("Signed in:", user.email);
             document.documentElement.dataset.auth = "signed-in";
