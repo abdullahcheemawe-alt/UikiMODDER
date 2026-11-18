@@ -143,6 +143,13 @@ function setActiveBottomTab(view) {
 }
 
 function hideMainViews() {
+    if (supportPostsUnsubscribe) {
+        supportPostsUnsubscribe();
+        supportPostsUnsubscribe = null;
+    }
+    supportReplyUnsubscribers.forEach((unsubscribe) => unsubscribe());
+    supportReplyUnsubscribers = [];
+    supportRepliesByPost = {};
     $(".hero-section")?.classList.add("hidden");
     $("#storeSection")?.classList.add("hidden");
     $("#appsSection")?.classList.add("hidden");
