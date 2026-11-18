@@ -21,7 +21,6 @@ service cloud.firestore {
       allow update, delete: if isOwner();
     }
 
-    // Public profile-free admin membership lookup; only owner manages roles.
     match /admins/{userId} {
       allow get: if request.auth != null
         && (request.auth.uid == userId || isOwner());
@@ -29,58 +28,80 @@ service cloud.firestore {
       allow create, update, delete: if isOwner();
     }
 
-    // Community support posts are public to read. Signed-in members can create
-    // their own report. Only admins can change issue status.
-    match /supportPosts/{postId} {
-      allow get, list: if true;
+    // Private one-to-one conversations: the user and admins only.
+    match /privateConversations/{userId} {
+      allow get: if request.auth != null
+        && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
 
       allow create: if request.auth != null
+        && request.auth.uid == userId
         && request.resource.data.keys().hasOnly([
-          'title', 'category', 'message', 'authorUid',
-          'authorName', 'status', 'createdAt'
+          'ownerUid', 'userName', 'userEmail', 'createdAt',
+          'lastMessage', 'lastMessageAt'
         ])
-        && request.resource.data.authorUid == request.auth.uid
-        && request.resource.data.authorName is string
-        && request.resource.data.authorName.size() <= 40
-        && request.resource.data.title is string
-        && request.resource.data.title.size() >= 4
-        && request.resource.data.title.size() <= 90
-        && request.resource.data.message is string
-        && request.resource.data.message.size() >= 10
-        && request.resource.data.message.size() <= 700
-        && request.resource.data.category in [
-          'Bug Report', 'Download Issue', 'Account Help', 'Suggestion', 'Other'
-        ]
-        && request.resource.data.status == 'open'
-        ;
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.userName is string
+        && request.resource.data.userName.size() <= 40
+        && request.resource.data.userEmail == request.auth.token.email
+        && request.resource.data.lastMessage is string
+        && request.resource.data.lastMessage.size() <= 140;
 
-      allow update: if isAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status', 'updatedAt'])
-        && request.resource.data.status in ['open', 'resolved'];
-
+      allow update: if request.auth != null && (
+        (
+          request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['lastMessage', 'lastMessageAt'])
+          && request.resource.data.ownerUid == resource.data.ownerUid
+        )
+        ||
+        (
+          isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'lastMessage', 'lastMessageAt',
+              'pinnedMessageId', 'pinnedText', 'pinnedAt', 'pinnedBy'
+            ])
+          && (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['pinnedBy'])
+            || request.resource.data.pinnedBy == request.auth.uid
+          )
+        )
+      );
       allow delete: if isAdmin();
 
-      match /replies/{replyId} {
-        allow get, list: if true;
+      match /messages/{messageId} {
+        function conversationOwner() {
+          return request.auth != null
+            && get(/databases/$(database)/documents/privateConversations/$(userId)).data.ownerUid == request.auth.uid;
+        }
+
+        allow get, list: if conversationOwner() || isAdmin();
 
         allow create: if request.auth != null
           && request.resource.data.keys().hasOnly([
-            'message', 'authorUid', 'authorName', 'role', 'createdAt'
+            'text', 'authorUid', 'authorName', 'role', 'createdAt'
           ])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 1
+          && request.resource.data.text.size() <= 1500
           && request.resource.data.authorUid == request.auth.uid
           && request.resource.data.authorName is string
           && request.resource.data.authorName.size() <= 40
-          && request.resource.data.message is string
-          && request.resource.data.message.size() >= 1
-          && request.resource.data.message.size() <= 400
-          && request.resource.data.role == (isAdmin() ? 'admin' : 'member');
+          && (
+            (conversationOwner() && request.resource.data.role == 'member')
+            || (isAdmin() && request.resource.data.role == 'admin')
+          );
 
         allow update, delete: if isAdmin();
       }
     }
 
-    // All unrelated collections remain closed by default.
+    // Previous public board is no longer used by the website.
+    match /supportPosts/{postId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
