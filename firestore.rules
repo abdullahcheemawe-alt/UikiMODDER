@@ -2,23 +2,87 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAdmin() {
+    function isOwner() {
       return request.auth != null
         && request.auth.token.email == "abdullahcheemakv@gmail.com";
     }
 
-    match /games/{gameId} {
-      // Game catalogue can be browsed without an account.
-      allow get, list: if true;
-
-      // Only the designated Firebase admin can publish or manage games.
-      allow create: if isAdmin()
-        && request.resource.data.createdBy == request.auth.uid;
-
-      allow update, delete: if isAdmin();
+    function isAdmin() {
+      return request.auth != null
+        && (isOwner()
+          || exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
     }
 
-    // All other collections remain private.
+    match /games/{gameId} {
+      allow get, list: if true;
+      allow create: if isOwner()
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isOwner();
+    }
+
+    // Public profile-free admin membership lookup; only owner manages roles.
+    match /admins/{userId} {
+      allow get: if request.auth != null
+        && (request.auth.uid == userId || isOwner());
+      allow list: if isOwner();
+      allow create, update, delete: if isOwner();
+    }
+
+    // Community support posts are public to read. Signed-in members can create
+    // their own report. Only admins can change issue status.
+    match /supportPosts/{postId} {
+      allow get, list: if true;
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          'title', 'category', 'message', 'authorUid',
+          'authorName', 'status', 'replies', 'createdAt'
+        ])
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() <= 40
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 4
+        && request.resource.data.title.size() <= 90
+        && request.resource.data.message is string
+        && request.resource.data.message.size() >= 10
+        && request.resource.data.message.size() <= 700
+        && request.resource.data.category in [
+          'Bug Report', 'Download Issue', 'Account Help', 'Suggestion', 'Other'
+        ]
+        && request.resource.data.status == 'open'
+        && request.resource.data.replies is list
+        && request.resource.data.replies.size() == 0;
+
+      allow update: if request.auth != null && (
+        (
+          isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'updatedAt'])
+          && request.resource.data.status in ['open', 'resolved']
+        )
+        ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['replies', 'updatedAt'])
+          && request.resource.data.status == resource.data.status
+          && resource.data.replies is list
+          && request.resource.data.replies is list
+          && request.resource.data.replies.size() == resource.data.replies.size() + 1
+          && request.resource.data.replies[resource.data.replies.size()].authorUid == request.auth.uid
+          && request.resource.data.replies[resource.data.replies.size()].authorName is string
+          && request.resource.data.replies[resource.data.replies.size()].authorName.size() <= 40
+          && request.resource.data.replies[resource.data.replies.size()].message is string
+          && request.resource.data.replies[resource.data.replies.size()].message.size() >= 1
+          && request.resource.data.replies[resource.data.replies.size()].message.size() <= 400
+          && request.resource.data.replies[resource.data.replies.size()].role == (isAdmin() ? 'admin' : 'member')
+        )
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // All unrelated collections remain closed by default.
     match /{document=**} {
       allow read, write: if false;
     }
