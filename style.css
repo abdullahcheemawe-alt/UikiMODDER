@@ -3098,3 +3098,8 @@ body { padding-bottom: 92px; }
         animation: none !important;
     }
 }
+
+@media (max-width: 650px) {
+    .navbar .nav-buttons { margin-left: auto; }
+    .navbar .account-welcome { display: none !important; }
+}
