@@ -20,6 +20,7 @@ import {
     collection,
     getDocs,
     addDoc,
+    setDoc,
     serverTimestamp,
     doc,
     getDoc,
@@ -50,6 +51,10 @@ let supportPostsUnsubscribe = null;
 let supportReplyUnsubscribers = [];
 let supportRepliesByPost = {};
 let currentUserIsAdmin = false;
+let dmConversationUnsubscribe = null;
+let dmMessagesUnsubscribe = null;
+let dmActiveConversationId = null;
+let dmConversations = [];
 
 window.firebaseApp = app;
 window.firebaseAuth = auth;
@@ -272,134 +277,184 @@ function showAdminUpload() {
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+function stopDirectMessageListeners() {
+    if (dmConversationUnsubscribe) dmConversationUnsubscribe();
+    if (dmMessagesUnsubscribe) dmMessagesUnsubscribe();
+    dmConversationUnsubscribe = null;
+    dmMessagesUnsubscribe = null;
+    dmActiveConversationId = null;
+}
+
 function showSupportBoard() {
     hideMainViews();
     $("#supportSection")?.classList.remove("hidden");
     $("#bottomNav")?.classList.add("hidden");
-    $("#supportGuestPanel")?.classList.toggle("hidden", Boolean(auth.currentUser));
-    $("#supportMemberArea")?.classList.toggle("hidden", !auth.currentUser);
-    loadSupportBoard();
+    const user = auth.currentUser;
+    $("#dmSignInPanel")?.classList.toggle("hidden", Boolean(user));
+    $("#dmAdminInbox")?.classList.toggle("hidden", !(user && currentUserIsAdmin));
+    $("#dmUserChat")?.classList.toggle("hidden", !(user && !currentUserIsAdmin));
+    if (!user) {
+        stopDirectMessageListeners();
+    } else if (currentUserIsAdmin) {
+        loadOwnerInbox();
+    } else {
+        loadUserConversation(user);
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function getSupportAuthorName(user) {
-    return String(user?.displayName || user?.email?.split("@")[0] || "UIKIMODDER User")
-        .replace(/[<>]/g, "").slice(0, 40);
+function formatDMDate(value) {
+    if (!value) return "";
+    const date = value.toDate ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-function renderSupportBoard(posts) {
-    const feed = $("#supportFeed");
-    const count = $("#supportPostCount");
-    if (!feed) return;
-    if (count) count.textContent = posts.length + (posts.length === 1 ? " POST" : " POSTS");
-    if (!posts.length) {
-        feed.innerHTML = '<div class="support-empty"><span>✦</span><h3>No discussions yet</h3><p>Be the first to report an issue or share feedback with the UIKIMODDER community.</p></div>';
+function dmSafeText(value) {
+    return escapeHTML(String(value || "")).replace(/\n/g, "<br>");
+}
+
+function renderDMMessages(container, snapshot, isOwnerView, pinned) {
+    if (!container) return;
+    if (snapshot.empty) {
+        container.innerHTML = '<div class="dm-chat-empty"><strong>How can we help?</strong><span>Send a private message to the UIKIMODDER owner. Only you and authorized admins can read this conversation.</span></div>';
         return;
     }
-
-    feed.innerHTML = posts.map((post) => {
-        const replies = supportRepliesByPost[post.id] || [];
-        const status = post.status === "resolved" ? "Resolved" : "Open";
-        const replyMarkup = replies.map((reply) => {
-            const admin = reply.role === "admin";
-            return '<div class="support-reply ' + (admin ? "support-admin-reply" : "") + '">' +
-                '<div class="support-reply-meta"><strong>' + escapeHTML(reply.authorName || "Community member") + '</strong>' +
-                (admin ? '<span class="support-role-badge">OWNER / ADMIN</span>' : "") +
-                '<time>' + escapeHTML(reply.createdAtLabel || "") + '</time></div>' +
-                '<p>' + escapeHTML(reply.message || "") + '</p></div>';
-        }).join("");
-        const adminControls = currentUserIsAdmin
-            ? '<button class="support-resolve-btn" type="button" data-support-action="toggle-status" data-post-id="' + escapeHTML(post.id) + '">' +
-                (post.status === "resolved" ? "REOPEN ISSUE" : "MARK RESOLVED") + '</button>'
+    container.innerHTML = snapshot.docs.map((entry) => {
+        const msg = entry.data();
+        const own = isOwnerView ? msg.role === "admin" : msg.authorUid === auth.currentUser?.uid;
+        const pinnedMark = pinned?.messageId === entry.id ? '<span class="dm-message-pin-label">PINNED</span>' : "";
+        const pinButton = isOwnerView
+            ? '<button type="button" class="dm-pin-btn" data-dm-pin="' + escapeHTML(entry.id) + '" data-dm-text="' + escapeHTML(String(msg.text || "").slice(0, 220)) + '">' + (pinned?.messageId === entry.id ? "Pinned" : "Pin") + '</button>'
             : "";
-        const replyForm = auth.currentUser
-            ? '<form class="support-reply-form" data-post-id="' + escapeHTML(post.id) + '">' +
-                '<input name="replyMessage" type="text" maxlength="400" placeholder="Write a helpful reply..." required>' +
-                '<button type="submit" aria-label="Send reply">↗</button></form>'
-            : '<p class="support-reply-signin">Sign in to join this discussion.</p>';
-        return '<article class="support-post-card" data-post-id="' + escapeHTML(post.id) + '">' +
-            '<div class="support-post-topline"><span class="support-topic">' + escapeHTML(post.category || "Other") + '</span>' +
-            '<span class="support-state ' + (status === "Resolved" ? "is-resolved" : "") + '">' + status + '</span></div>' +
-            '<h3>' + escapeHTML(post.title || "Support request") + '</h3>' +
-            '<p class="support-post-message">' + escapeHTML(post.message || "") + '</p>' +
-            '<div class="support-post-meta"><span>Posted by <strong>' + escapeHTML(post.authorName || "Community member") + '</strong></span>' +
-            '<time>' + escapeHTML(post.createdAtLabel || "") + '</time></div>' +
-            (replies.length ? '<div class="support-replies"><h4>Discussion <span>' + replies.length + '</span></h4>' + replyMarkup + '</div>' : '<div class="support-no-replies">No replies yet — start the conversation.</div>') +
-            '<div class="support-post-actions">' + adminControls + '</div>' + replyForm + '</article>';
+        return '<article class="dm-message-row ' + (own ? "is-own" : "") + '" data-message-id="' + escapeHTML(entry.id) + '">' +
+            '<div class="dm-message-bubble">' +
+            '<div class="dm-message-meta"><strong>' + (msg.role === "admin" ? "UIKIMODDER Owner" : escapeHTML(msg.authorName || "Member")) + '</strong><time>' + escapeHTML(formatDMDate(msg.createdAt)) + '</time></div>' +
+            '<p>' + dmSafeText(msg.text) + '</p>' + pinnedMark + pinButton +
+            '</div></article>';
     }).join("");
+    container.scrollTop = container.scrollHeight;
 }
 
-function formatSupportDate(value) {
-    if (!value) return "Just now";
-    const date = value.toDate ? value.toDate() : new Date(value);
-    if (Number.isNaN(date.getTime())) return "Just now";
-    return date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
-}
+function watchDMConversation(conversationId, isOwnerView) {
+    if (dmMessagesUnsubscribe) dmMessagesUnsubscribe();
+    dmActiveConversationId = conversationId;
+    const messageContainer = isOwnerView ? $("#dmAdminMessages") : $("#dmUserMessages");
+    const pinnedContainer = isOwnerView ? $("#dmAdminPinned") : $("#dmUserPinned");
+    const conversationRef = doc(db, "privateConversations", conversationId);
 
-function loadSupportBoard() {
-    const feed = $("#supportFeed");
-    if (!feed) return;
-    if (supportPostsUnsubscribe) {
-        supportPostsUnsubscribe();
-        supportPostsUnsubscribe = null;
-    }
-    supportReplyUnsubscribers.forEach((unsubscribe) => unsubscribe());
-    supportReplyUnsubscribers = [];
-    supportRepliesByPost = {};
-    feed.innerHTML = '<div class="support-empty"><span class="support-loading-spinner"></span><h3>Loading community board</h3><p>Fetching the latest reports and replies...</p></div>';
-
-    const postsQuery = query(collection(db, "supportPosts"), orderBy("createdAt", "desc"), limit(50));
-    supportPostsUnsubscribe = onSnapshot(postsQuery, (snapshot) => {
-        const posts = snapshot.docs.map((entry) => {
-            const data = entry.data();
-            return { id: entry.id, ...data, createdAtLabel: formatSupportDate(data.createdAt) };
-        });
-        supportReplyUnsubscribers.forEach((unsubscribe) => unsubscribe());
-        supportReplyUnsubscribers = [];
-        supportRepliesByPost = {};
-        if (!posts.length) {
-            renderSupportBoard([]);
-            return;
+    if (dmConversationUnsubscribe) dmConversationUnsubscribe();
+    dmConversationUnsubscribe = onSnapshot(conversationRef, (conversationSnap) => {
+        const data = conversationSnap.exists() ? conversationSnap.data() : {};
+        const pinned = data.pinnedMessageId ? {
+            messageId: data.pinnedMessageId,
+            text: data.pinnedText || ""
+        } : null;
+        if (pinnedContainer) {
+            pinnedContainer.classList.toggle("hidden", !pinned);
+            pinnedContainer.textContent = pinned ? "PINNED MESSAGE  ·  " + pinned.text : "";
         }
-        let readyCount = 0;
-        posts.forEach((post) => {
-            const repliesQuery = query(collection(db, "supportPosts", post.id, "replies"), orderBy("createdAt", "asc"));
-            const unsubscribe = onSnapshot(repliesQuery, (replySnapshot) => {
-                supportRepliesByPost[post.id] = replySnapshot.docs.map((replyDoc) => {
-                    const reply = replyDoc.data();
-                    return { ...reply, createdAtLabel: formatSupportDate(reply.createdAt) };
-                });
-                readyCount += 1;
-                if (readyCount >= posts.length) renderSupportBoard(posts);
-            }, (replyError) => {
-                console.error("Could not load replies for support post:", post.id, replyError);
-                supportRepliesByPost[post.id] = [];
-                readyCount += 1;
-                if (readyCount >= posts.length) renderSupportBoard(posts);
-            });
-            supportReplyUnsubscribers.push(unsubscribe);
+        if (isOwnerView) {
+            const name = data.userName || "UIKIMODDER Member";
+            const email = data.userEmail || "";
+            $("#dmAdminChatHeader").innerHTML = '<div class="dm-avatar">' + escapeHTML(name.charAt(0).toUpperCase()) + '</div><div><strong>' + escapeHTML(name) + '</strong><span>' + escapeHTML(email) + ' · Private conversation</span></div>';
+        }
+        const messagesQuery = query(collection(db, "privateConversations", conversationId, "messages"), orderBy("createdAt", "asc"), limit(200));
+        if (dmMessagesUnsubscribe) dmMessagesUnsubscribe();
+        dmMessagesUnsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+            renderDMMessages(messageContainer, snapshot, isOwnerView, pinned);
+        }, (error) => {
+            console.error("Private messages could not load:", error);
+            if (messageContainer) messageContainer.innerHTML = '<div class="dm-chat-empty">Messages could not load. Check Firestore rules.</div>';
         });
     }, (error) => {
-        console.error("Support board could not load:", error);
-        feed.innerHTML = '<div class="support-empty"><span>!</span><h3>Support board unavailable</h3><p>Check the Firestore supportPosts read rules and internet connection, then refresh this page.</p></div>';
+        console.error("Private conversation could not load:", error);
     });
 }
 
-async function checkCurrentUserAdmin(user) {
-    if (!user) return false;
-    if ((user.email || "").toLowerCase() === "abdullahcheemakv@gmail.com") return true;
-    try {
-        const adminDoc = await getDoc(doc(db, "admins", user.uid));
-        return adminDoc.exists() && adminDoc.data()?.active !== false;
-    } catch (error) {
-        console.warn("Could not read admin membership:", error);
-        return false;
+async function loadUserConversation(user) {
+    stopDirectMessageListeners();
+    const conversationRef = doc(db, "privateConversations", user.uid);
+    dmConversationUnsubscribe = onSnapshot(conversationRef, (snapshot) => {
+        if (!snapshot.exists()) {
+            const box = $("#dmUserMessages");
+            if (box) box.innerHTML = '<div class="dm-chat-empty"><strong>Welcome to Contact Owner.</strong><span>Send your first private message below. Our team will reply here.</span></div>';
+            $("#dmUserPinned")?.classList.add("hidden");
+            return;
+        }
+        watchDMConversation(user.uid, false);
+    }, (error) => {
+        console.error("Could not open private conversation:", error);
+        $("#dmUserMessages").innerHTML = '<div class="dm-chat-empty">Your private inbox could not load. Please check Firestore rules.</div>';
+    });
+}
+
+function loadOwnerInbox() {
+    stopDirectMessageListeners();
+    const list = $("#dmConversationList");
+    if (list) list.innerHTML = '<div class="dm-list-empty">Loading private messages…</div>';
+    const inboxQuery = query(collection(db, "privateConversations"), orderBy("lastMessageAt", "desc"), limit(100));
+    dmConversationUnsubscribe = onSnapshot(inboxQuery, (snapshot) => {
+        dmConversations = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+        $("#dmInboxCount").textContent = String(dmConversations.length);
+        if (!dmConversations.length) {
+            list.innerHTML = '<div class="dm-list-empty">No messages yet. New user conversations will appear here.</div>';
+            return;
+        }
+        list.innerHTML = dmConversations.map((item) => {
+            const active = item.id === dmActiveConversationId;
+            return '<button type="button" class="dm-conversation-item ' + (active ? "is-active" : "") + '" data-dm-conversation="' + escapeHTML(item.id) + '">' +
+                '<span class="dm-list-avatar">' + escapeHTML(String(item.userName || "U").charAt(0).toUpperCase()) + '</span>' +
+                '<span class="dm-list-copy"><strong>' + escapeHTML(item.userName || "UIKIMODDER User") + '</strong><small>' + escapeHTML(item.lastMessage || "New conversation") + '</small></span>' +
+                '<time>' + escapeHTML(formatDMDate(item.lastMessageAt)) + '</time>' +
+                (item.pinnedMessageId ? '<span class="dm-list-pin">PIN</span>' : '') +
+                '</button>';
+        }).join("");
+        if (dmActiveConversationId) {
+            const activeItem = dmConversations.find((item) => item.id === dmActiveConversationId);
+            if (activeItem) watchDMConversation(activeItem.id, true);
+        }
+    }, (error) => {
+        console.error("Owner inbox could not load:", error);
+        list.innerHTML = '<div class="dm-list-empty">Inbox unavailable. Check admin access and Firestore rules.</div>';
+    });
+}
+
+async function sendDMMessage(conversationId, user, text, isAdmin) {
+    const clean = String(text || "").trim();
+    if (!clean || clean.length > 1500) throw new Error("Message must be between 1 and 1500 characters.");
+    const conversationRef = doc(db, "privateConversations", conversationId);
+    const conversationSnap = await getDoc(conversationRef);
+    const authorName = getSupportAuthorName(user);
+    const messageData = {
+        text: clean,
+        authorUid: user.uid,
+        authorName: isAdmin ? "UIKIMODDER Owner" : authorName,
+        role: isAdmin ? "admin" : "member",
+        createdAt: serverTimestamp()
+    };
+    if (!conversationSnap.exists()) {
+        if (isAdmin) throw new Error("This conversation no longer exists.");
+        await setDoc(conversationRef, {
+            ownerUid: user.uid,
+            userName: authorName,
+            userEmail: user.email || "",
+            createdAt: serverTimestamp(),
+            lastMessage: clean.slice(0, 140),
+            lastMessageAt: serverTimestamp()
+        });
     }
+    await addDoc(collection(db, "privateConversations", conversationId, "messages"), messageData);
+    await updateDoc(conversationRef, {
+        lastMessage: (isAdmin ? "Owner: " : "") + clean.slice(0, 140),
+        lastMessageAt: serverTimestamp()
+    });
 }
 
 function initializeSupportBoard() {
     $("#supportOpen")?.addEventListener("click", showSupportBoard);
     $("#supportBackBtn")?.addEventListener("click", () => {
+        stopDirectMessageListeners();
         if (auth.currentUser) showStore();
         else {
             $("#supportSection")?.classList.add("hidden");
@@ -407,94 +462,74 @@ function initializeSupportBoard() {
             window.scrollTo({ top: 0, behavior: "smooth" });
         }
     });
-    $("#supportSignInBtn")?.addEventListener("click", () => openAuthModal("signin"));
+    $("#dmSignInBtn")?.addEventListener("click", () => openAuthModal("signin"));
 
-    $("#supportReportForm")?.addEventListener("submit", async (event) => {
+    $("#dmUserMessageForm")?.addEventListener("submit", async (event) => {
         event.preventDefault();
         const user = auth.currentUser;
-        if (!user) {
-            openAuthModal("signin");
-            return;
-        }
-        const title = $("#supportTitle")?.value.trim() || "";
-        const category = $("#supportCategory")?.value || "Other";
-        const message = $("#supportMessage")?.value.trim() || "";
-        const button = $("#supportSubmitBtn");
-        if (title.length < 4 || message.length < 10) {
-            setStatus($("#supportStatus"), "Please add a clear title and at least 10 characters describing the issue.", true);
-            return;
-        }
+        if (!user) return openAuthModal("signin");
+        const input = $("#dmUserMessageInput");
+        const button = event.currentTarget.querySelector("button");
+        const value = input.value.trim();
+        if (!value) return;
         button.disabled = true;
-        button.textContent = "POSTING...";
-        setStatus($("#supportStatus"), "Publishing your report...");
+        button.textContent = "Sending…";
         try {
-            await addDoc(collection(db, "supportPosts"), {
-                title, category, message,
-                authorUid: user.uid,
-                authorName: getSupportAuthorName(user),
-                status: "open",
-                replies: [],
-                createdAt: serverTimestamp()
-            });
-            event.currentTarget.reset();
-            setStatus($("#supportStatus"), "Your report is now visible to the community.");
+            await sendDMMessage(user.uid, user, value, false);
+            input.value = "";
+            $("#dmUserStatus").textContent = "Message sent privately.";
         } catch (error) {
-            console.error("Could not publish support report:", error);
-            setStatus($("#supportStatus"), "Could not post this report. Check Firestore supportPosts create rules and try again.", true);
+            console.error("Private message failed:", error);
+            $("#dmUserStatus").textContent = "Message could not be sent. Please try again.";
         } finally {
             button.disabled = false;
-            button.textContent = "POST REPORT ↗";
+            button.textContent = "Send";
         }
     });
 
-    $("#supportFeed")?.addEventListener("submit", async (event) => {
-        const form = event.target.closest(".support-reply-form");
-        if (!form) return;
+    $("#dmAdminReplyForm")?.addEventListener("submit", async (event) => {
         event.preventDefault();
         const user = auth.currentUser;
-        if (!user) {
-            openAuthModal("signin");
-            return;
-        }
-        const input = form.elements.replyMessage;
-        const message = String(input?.value || "").trim();
-        const postId = form.dataset.postId;
-        const send = form.querySelector("button");
-        if (!message || message.length > 400 || !postId) return;
-        send.disabled = true;
+        const conversationId = dmActiveConversationId;
+        const input = $("#dmAdminReplyInput");
+        const button = event.currentTarget.querySelector("button");
+        const value = input.value.trim();
+        if (!user || !currentUserIsAdmin || !conversationId || !value) return;
+        button.disabled = true;
         try {
-            await addDoc(collection(db, "supportPosts", postId, "replies"), {
-                message,
-                authorUid: user.uid,
-                authorName: getSupportAuthorName(user),
-                role: currentUserIsAdmin ? "admin" : "member",
-                createdAt: serverTimestamp()
-            });
+            await sendDMMessage(conversationId, user, value, true);
             input.value = "";
         } catch (error) {
-            console.error("Could not send support reply:", error);
-            alert("Your reply could not be sent. Please check the Firestore support rules and try again.");
+            console.error("Owner reply failed:", error);
+            alert("Reply could not be sent. Check the private messaging Firestore rules.");
         } finally {
-            send.disabled = false;
+            button.disabled = false;
         }
     });
 
-    $("#supportFeed")?.addEventListener("click", async (event) => {
-        const button = event.target.closest('[data-support-action="toggle-status"]');
+    $("#dmConversationList")?.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-dm-conversation]");
         if (!button || !currentUserIsAdmin) return;
-        const postId = button.dataset.postId;
-        const card = button.closest(".support-post-card");
-        const state = card?.querySelector(".support-state");
-        const isResolved = state?.textContent.trim() === "Resolved";
+        dmActiveConversationId = button.dataset.dmConversation;
+        $("#dmAdminReplyForm")?.classList.remove("hidden");
+        loadOwnerInbox();
+        watchDMConversation(dmActiveConversationId, true);
+    });
+
+    $("#dmAdminMessages")?.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-dm-pin]");
+        if (!button || !currentUserIsAdmin || !dmActiveConversationId) return;
         button.disabled = true;
         try {
-            await updateDoc(doc(db, "supportPosts", postId), {
-                status: isResolved ? "open" : "resolved",
-                updatedAt: serverTimestamp()
+            await updateDoc(doc(db, "privateConversations", dmActiveConversationId), {
+                pinnedMessageId: button.dataset.dmPin,
+                pinnedText: button.dataset.dmText || "",
+                pinnedAt: serverTimestamp(),
+                pinnedBy: auth.currentUser.uid
             });
         } catch (error) {
-            console.error("Could not update support status:", error);
-            alert("Only an authorized owner/admin can update issue status.");
+            console.error("Pin message failed:", error);
+            alert("Only an authorized admin can pin a message.");
         } finally {
             button.disabled = false;
         }
@@ -1118,9 +1153,10 @@ function initializeAuthentication() {
         $("#adminUploadNav")?.classList.toggle("hidden", !isSuperAdmin);
         bottomNav?.classList.toggle("admin-mode", isSuperAdmin);
 
-        $("#supportGuestPanel")?.classList.toggle("hidden", loggedIn);
-        $("#supportMemberArea")?.classList.toggle("hidden", !loggedIn);
-        if (!$("#supportSection")?.classList.contains("hidden")) loadSupportBoard();
+        $("#dmSignInPanel")?.classList.toggle("hidden", loggedIn);
+        $("#dmAdminInbox")?.classList.toggle("hidden", !(loggedIn && currentUserIsAdmin));
+        $("#dmUserChat")?.classList.toggle("hidden", !(loggedIn && !currentUserIsAdmin));
+        if (!$("#supportSection")?.classList.contains("hidden")) showSupportBoard();
         if (user) {
             console.log("Signed in:", user.email);
             document.documentElement.dataset.auth = "signed-in";
