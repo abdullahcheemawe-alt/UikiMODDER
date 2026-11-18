@@ -2527,18 +2527,3 @@ body { padding-bottom: 92px; }
         animation: none !important;
     }
 }
-
-
-/* Keep the page content hidden only while Firebase restores the saved
-   session. No visible loader, text, spinner, or pseudo-element is shown. */
-html[data-auth="checking"] .navbar,
-html[data-auth="checking"] .hero-section,
-html[data-auth="checking"] #storeSection,
-html[data-auth="checking"] #appsSection,
-html[data-auth="checking"] #profileSection,
-html[data-auth="checking"] #adminSection,
-html[data-auth="checking"] #itemDetailSection,
-html[data-auth="checking"] #bottomNav,
-html[data-auth="checking"] #authModal {
-    visibility: hidden !important;
-}
