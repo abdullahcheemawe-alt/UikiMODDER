@@ -1181,6 +1181,16 @@ function initializeAuthentication() {
 
         if (user) {
             console.log("Signed in:", user.email);
+            // Publish a minimal searchable profile for the private member directory.
+            try {
+                await setDoc(doc(db, "users", user.uid), {
+                    uid: user.uid,
+                    displayName: getSupportAuthorName(user),
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+            } catch (profileError) {
+                console.warn("Member profile sync skipped:", profileError);
+            }
             document.documentElement.dataset.auth = "signed-in";
             const label = $("#accountWelcome");
             if (label) label.textContent = "Welcome back, " + (user.displayName || user.email?.split("@")[0] || "Gamer");

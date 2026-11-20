@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#080b1c">
+<title>Messages | UIKIMODDER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=26">
+<style>
+:root{color-scheme:dark}body{min-height:100vh;background:#080b1c;color:#eef4ff;font-family:Outfit,sans-serif}
+.chat-page{width:min(1120px,94%);margin:24px auto 70px}.chat-head{display:flex;align-items:center;gap:14px;padding:12px 0 20px;border-bottom:1px solid #ffffff16}
+.chat-back{border:1px solid #ffffff20;background:#111a35;color:#eaf5ff;border-radius:12px;padding:10px 14px;text-decoration:none;font-weight:700}
+.chat-brand{font-size:20px;font-weight:800;letter-spacing:.4px}.chat-brand span{color:#39e9f0}.chat-head small{display:block;color:#8292b8;font-size:11px}
+.chat-layout{display:grid;grid-template-columns:320px minmax(0,1fr);height:min(720px,calc(100vh - 150px));min-height:500px;margin-top:20px;border:1px solid #ffffff17;border-radius:22px;overflow:hidden;background:#0c1430;box-shadow:0 24px 70px #0005}
+.chat-sidebar{border-right:1px solid #ffffff14;display:flex;flex-direction:column;min-height:0}.side-title{padding:20px 18px 12px;font-size:20px;font-weight:800}
+.chat-search{margin:0 14px 12px;padding:12px 14px;width:calc(100% - 28px);border:1px solid #ffffff18;border-radius:13px;background:#070e22;color:#fff;outline:none;font:inherit}.chat-search:focus{border-color:#28dce9}
+.search-results,.chat-list{overflow:auto;padding:0 10px 12px}.person-row,.chat-row{width:100%;display:flex;align-items:center;gap:11px;text-align:left;padding:12px 9px;border:0;border-radius:13px;background:transparent;color:#edf4ff;cursor:pointer}.person-row:hover,.chat-row:hover,.chat-row.active{background:#1a294b}
+.person-avatar,.chat-avatar{width:40px;height:40px;flex:0 0 40px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#16d9df,#7b68ff);color:#061328;font-weight:900}
+.person-info,.chat-info{min-width:0;flex:1}.person-info b,.chat-info b{display:block;font-size:13px}.person-info small,.chat-info small{display:block;color:#8292b8;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.side-label{padding:12px 17px 6px;color:#7485ac;font-size:9px;font-weight:800;letter-spacing:1.5px}
+.chat-main{display:flex;flex-direction:column;min-width:0;min-height:0}.conversation-head{height:70px;flex:0 0 70px;display:flex;align-items:center;gap:11px;padding:12px 18px;border-bottom:1px solid #ffffff12}.conversation-head b{display:block;font-size:14px}.conversation-head small{color:#8292b8;font-size:10px}.chat-messages{flex:1;min-height:0;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:11px;background:radial-gradient(ellipse at 50% 0%,#18264a66,transparent 65%)}
+.message{max-width:min(76%,520px);align-self:flex-start;padding:10px 13px;border:1px solid #ffffff12;border-radius:16px 16px 16px 5px;background:#182343;overflow-wrap:anywhere}
+.message.mine{align-self:flex-end;border-color:#28dce933;border-radius:16px 16px 5px 16px;background:linear-gradient(135deg,#087e92,#5348a0)}
+.message b{display:block;color:#9beef4;font-size:9px;margin-bottom:4px}.message p{font-size:13px;line-height:1.5;white-space:pre-wrap}.message time{display:block;text-align:right;color:#c0c9df9c;font-size:8px;margin-top:6px}
+.chat-compose{display:flex;gap:9px;padding:14px;border-top:1px solid #ffffff14;background:#0b132b}.chat-compose input{flex:1;min-width:0;border:1px solid #ffffff20;border-radius:24px;background:#070e22;color:#fff;padding:13px 16px;outline:none;font:inherit;font-size:13px}.chat-compose button,.primary-btn{border:0;border-radius:22px;padding:0 21px;background:linear-gradient(110deg,#28e3e9,#9c83ff);color:#071329;font:inherit;font-size:12px;font-weight:900;cursor:pointer}.chat-compose button:disabled{opacity:.5}
+.chat-empty{margin:auto;text-align:center;color:#8595bb;padding:25px}.chat-empty strong{display:block;color:#edf5ff;font-size:16px;margin-bottom:7px}.chat-empty small{font-size:11px}
+.auth-card{max-width:420px;margin:80px auto;padding:28px;border:1px solid #ffffff1c;border-radius:20px;background:#101a37}.auth-card h1{margin:0 0 8px}.auth-card p{color:#92a0c1;font-size:12px}.auth-card label{display:block;margin:14px 0 6px;font-size:11px}.auth-card input{width:100%;padding:12px;border:1px solid #ffffff22;border-radius:10px;background:#080f25;color:white;font:inherit}.auth-card button{width:100%;padding:13px;margin-top:18px}.auth-status{min-height:18px;color:#ff8d9d;font-size:11px}
+@media(max-width:700px){.chat-page{width:100%;margin:0}.chat-head{padding:12px 14px}.chat-layout{grid-template-columns:112px minmax(0,1fr);height:calc(100dvh - 72px);min-height:0;margin:0;border-radius:0;border-left:0;border-right:0}.side-title{padding:16px 9px;font-size:15px}.chat-search{margin:0 6px 8px;width:calc(100% - 12px);padding:10px 7px;font-size:10px}.side-label{padding:10px 8px;font-size:8px}.person-row,.chat-row{gap:6px;padding:10px 4px;flex-direction:column;text-align:center}.person-avatar,.chat-avatar{width:34px;height:34px;flex-basis:34px}.person-info,.chat-info{width:100%}.person-info b,.chat-info b{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.person-info small,.chat-info small{font-size:8px}.chat-messages{padding:13px 9px}.message{max-width:92%;padding:9px 11px}.message p{font-size:12px}.conversation-head{padding:10px;height:62px;flex-basis:62px}.chat-compose{padding:9px;gap:6px}.chat-compose input{padding:11px 12px;font-size:11px}.chat-compose button{padding:0 13px;font-size:10px}}
+</style>
+</head>
+<body>
+<div class="background-effects" aria-hidden="true"><div class="glow glow-one"></div><div class="glow glow-two"></div><div class="glow glow-three"></div></div>
+<main class="chat-page">
+<header class="chat-head"><a class="chat-back" href="index.html">← Back</a><div class="chat-brand">UIKI<span>MODDER</span><small>Private messages</small></div></header>
+<section id="authPanel" class="auth-card hidden">
+<h1>Sign in to chat</h1><p>Use your existing UIKIMODDER account to find members and send private messages.</p>
+<form id="chatAuthForm"><label for="chatEmail">Email address</label><input id="chatEmail" type="email" required autocomplete="username"><label for="chatPassword">Password</label><input id="chatPassword" type="password" required autocomplete="current-password"><button class="primary-btn" type="submit">SIGN IN</button><div id="authStatus" class="auth-status"></div></form>
+</section>
+<section id="messenger" class="chat-layout hidden">
+<aside class="chat-sidebar"><div class="side-title">Messages</div><input id="memberSearch" class="chat-search" type="search" placeholder="Search members..." autocomplete="off"><div id="searchResults" class="search-results"></div><div class="side-label">YOUR CHATS</div><div id="chatList" class="chat-list"><div class="chat-empty">No chats yet</div></div></aside>
+<section class="chat-main"><header id="conversationHead" class="conversation-head"><div class="chat-avatar">✦</div><div><b>Choose a member</b><small>Search a username to start a conversation</small></div></header><div id="messages" class="chat-messages"><div class="chat-empty"><strong>Your private inbox</strong><small>Search for a member or open an existing chat.</small></div></div><form id="messageForm" class="chat-compose"><input id="messageInput" maxlength="1500" placeholder="Write a message..." autocomplete="off" disabled required><button type="submit" disabled>Send</button></form></section>
+</section>
+</main>
+<script type="module" src="js/chat.js?v=1"></script>
+</body>
+</html>
