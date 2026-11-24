@@ -3461,3 +3461,49 @@ body { padding-bottom: 92px; }
     .dm-public-chat { min-height: 500px; border-radius: 18px; }
     .dm-public-chat .dm-messages { min-height: 330px; max-height: 55vh; }
 }
+
+
+/* UIKIMODDER compact, always-visible private/public channel selector */
+#supportSection .dm-mode-switch {
+    display: flex;
+    visibility: visible;
+    position: relative;
+    z-index: 2;
+    width: fit-content;
+    min-height: 30px;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin: 0 auto 16px;
+    padding: 3px 6px;
+    border: 1px solid rgba(85, 210, 235, .24);
+    border-radius: 999px;
+    background: rgba(7, 12, 32, .92);
+    box-shadow: 0 5px 18px rgba(0, 0, 0, .16);
+}
+#supportSection .dm-mode-switch button {
+    display: inline-flex;
+    min-height: 24px;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 9px;
+    font-size: 9px;
+    line-height: 1;
+    letter-spacing: .35px;
+}
+#supportSection .dm-mode-switch > span {
+    color: #6e7d9f;
+    font-size: 9px;
+    font-weight: 800;
+}
+.dm-public-role {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 5px;
+    border: 1px solid rgba(45, 225, 235, .25);
+    border-radius: 5px;
+    color: #43e6ed;
+    font-size: 8px;
+    letter-spacing: .5px;
+    vertical-align: middle;
+}
