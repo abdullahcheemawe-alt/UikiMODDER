@@ -56,6 +56,8 @@ let dmConversationUnsubscribe = null;
 let dmMessagesUnsubscribe = null;
 let dmActiveConversationId = null;
 let dmConversations = [];
+let dmPublicMessagesUnsubscribe = null;
+let activeSupportMode = "private";
 
 window.firebaseApp = app;
 window.firebaseAuth = auth;
@@ -311,18 +313,43 @@ function showSupportBoard() {
     hideMainViews();
     $("#supportSection")?.classList.remove("hidden");
     $("#bottomNav")?.classList.add("hidden");
-    const user = auth.currentUser;
-    $("#dmSignInPanel")?.classList.toggle("hidden", Boolean(user));
-    $("#dmAdminInbox")?.classList.toggle("hidden", !(user && currentUserIsAdmin));
-    $("#dmUserChat")?.classList.toggle("hidden", !(user && !currentUserIsAdmin));
-    if (!user) {
-        stopDirectMessageListeners();
-    } else if (currentUserIsAdmin) {
-        loadOwnerInbox();
-    } else {
-        loadUserConversation(user);
-    }
+    setSupportMode("private");
     window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function setSupportMode(mode) {
+    activeSupportMode = mode === "public" ? "public" : "private";
+    const user = auth.currentUser;
+
+    if (dmPublicMessagesUnsubscribe) {
+        dmPublicMessagesUnsubscribe();
+        dmPublicMessagesUnsubscribe = null;
+    }
+    stopDirectMessageListeners();
+
+    $("#dmPrivateModeBtn")?.classList.toggle("is-active", activeSupportMode === "private");
+    $("#dmPublicModeBtn")?.classList.toggle("is-active", activeSupportMode === "public");
+    $("#dmPrivateModeBtn")?.setAttribute("aria-pressed", String(activeSupportMode === "private"));
+    $("#dmPublicModeBtn")?.setAttribute("aria-pressed", String(activeSupportMode === "public"));
+    $("#dmPrivateModePanel")?.classList.toggle("hidden", activeSupportMode !== "private");
+    $("#dmPublicModePanel")?.classList.toggle("hidden", activeSupportMode !== "public");
+    $("#dmTopSubtitle").textContent = activeSupportMode === "private"
+        ? "Private support conversation"
+        : "Public community conversation";
+    $("#dmSecureLabel").textContent = activeSupportMode === "private" ? "PRIVATE" : "PUBLIC";
+
+    if (activeSupportMode === "private") {
+        $("#dmSignInPanel")?.classList.toggle("hidden", Boolean(user));
+        $("#dmAdminInbox")?.classList.toggle("hidden", !(user && currentUserIsAdmin));
+        $("#dmUserChat")?.classList.toggle("hidden", !(user && !currentUserIsAdmin));
+        if (!user) stopDirectMessageListeners();
+        else if (currentUserIsAdmin) loadOwnerInbox();
+        else loadUserConversation(user);
+    } else {
+        $("#dmPublicSignInPanel")?.classList.toggle("hidden", Boolean(user));
+        $("#dmPublicChat")?.classList.toggle("hidden", !user);
+        if (user) loadPublicChat();
+    }
 }
 
 function formatDMDate(value) {
@@ -459,6 +486,65 @@ function loadOwnerInbox() {
     });
 }
 
+function renderPublicMessages(snapshot) {
+    const container = $("#dmPublicMessages");
+    if (!container) return;
+    if (snapshot.empty) {
+        container.innerHTML = '<div class="dm-chat-empty"><strong>Start the community conversation.</strong><span>Be respectful. Do not share passwords, phone numbers, addresses, or other private information.</span></div>';
+        return;
+    }
+    container.innerHTML = snapshot.docs.slice().reverse().map((entry) => {
+        const message = entry.data();
+        const own = message.authorUid === auth.currentUser?.uid;
+        const author = message.role === "admin" ? "UIKIMODDER Owner" : (message.authorName || "Member");
+        return '<article class="dm-message-row ' + (own ? "is-own" : "") + '">' +
+            '<div class="dm-message-bubble">' +
+            '<div class="dm-message-meta"><strong>' + escapeHTML(author) + '</strong><time>' + escapeHTML(formatDMDate(message.createdAt)) + '</time></div>' +
+            '<p>' + dmSafeText(message.text) + '</p>' +
+            '</div></article>';
+    }).join("");
+    container.scrollTop = container.scrollHeight;
+}
+
+function loadPublicChat() {
+    if (dmPublicMessagesUnsubscribe) dmPublicMessagesUnsubscribe();
+    const container = $("#dmPublicMessages");
+    if (container) container.innerHTML = '<div class="dm-chat-empty">Loading public messages…</div>';
+    const publicQuery = query(
+        collection(db, "supportPublicMessages"),
+        orderBy("createdAt", "desc"),
+        limit(100)
+    );
+    dmPublicMessagesUnsubscribe = onSnapshot(publicQuery, (snapshot) => {
+        $("#dmPublicCount").textContent = String(snapshot.size);
+        renderPublicMessages(snapshot);
+    }, (error) => {
+        console.error("Public community chat could not load:", {
+            code: error?.code || "unknown",
+            message: error?.message || String(error),
+            error
+        });
+        if (container) {
+            container.innerHTML = '<div class="dm-chat-empty">Public chat could not load: ' +
+                escapeHTML(getDMErrorMessage(error)) + '</div>';
+        }
+    });
+}
+
+async function sendPublicMessage(user, text) {
+    const clean = String(text || "").trim();
+    if (!clean || clean.length > 1000) {
+        throw new Error("Messages must contain 1 to 1000 characters.");
+    }
+    await addDoc(collection(db, "supportPublicMessages"), {
+        text: clean,
+        authorUid: user.uid,
+        authorName: getSupportAuthorName(user),
+        role: currentUserIsAdmin ? "admin" : "member",
+        createdAt: serverTimestamp()
+    });
+}
+
 async function sendDMMessage(conversationId, user, text, isAdmin) {
     const clean = String(text || "").trim();
     if (!clean || clean.length > 1500) throw new Error("Message must be between 1 and 1500 characters.");
@@ -541,6 +627,36 @@ function initializeSupportBoard() {
         }
     });
     $("#dmSignInBtn")?.addEventListener("click", () => openAuthModal("signin"));
+    $("#dmPublicSignInBtn")?.addEventListener("click", () => openAuthModal("signin"));
+    $("#dmPrivateModeBtn")?.addEventListener("click", () => setSupportMode("private"));
+    $("#dmPublicModeBtn")?.addEventListener("click", () => setSupportMode("public"));
+
+    $("#dmPublicMessageForm")?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const user = auth.currentUser;
+        if (!user) return openAuthModal("signin");
+        const input = $("#dmPublicMessageInput");
+        const button = event.currentTarget.querySelector("button");
+        const value = input.value.trim();
+        if (!value) return;
+        button.disabled = true;
+        button.textContent = "Sending…";
+        try {
+            await sendPublicMessage(user, value);
+            input.value = "";
+            $("#dmPublicStatus").textContent = "Message posted publicly.";
+        } catch (error) {
+            console.error("Public message failed:", {
+                code: error?.code || "unknown",
+                message: error?.message || String(error),
+                error
+            });
+            $("#dmPublicStatus").textContent = getDMErrorMessage(error);
+        } finally {
+            button.disabled = false;
+            button.textContent = "Send";
+        }
+    });
 
     $("#dmUserMessageForm")?.addEventListener("submit", async (event) => {
         event.preventDefault();
