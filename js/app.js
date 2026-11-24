@@ -497,9 +497,10 @@ function renderPublicMessages(snapshot) {
         const message = entry.data();
         const own = message.authorUid === auth.currentUser?.uid;
         const author = message.role === "admin" ? "UIKIMODDER Owner" : (message.authorName || "Member");
+        const roleLabel = message.role === "admin" ? '<span class="dm-public-role">ADMIN</span>' : "";
         return '<article class="dm-message-row ' + (own ? "is-own" : "") + '">' +
             '<div class="dm-message-bubble">' +
-            '<div class="dm-message-meta"><strong>' + escapeHTML(author) + '</strong><time>' + escapeHTML(formatDMDate(message.createdAt)) + '</time></div>' +
+            '<div class="dm-message-meta"><strong>' + escapeHTML(author) + roleLabel + '</strong><time>' + escapeHTML(formatDMDate(message.createdAt)) + '</time></div>' +
             '<p>' + dmSafeText(message.text) + '</p>' +
             '</div></article>';
     }).join("");
@@ -513,7 +514,7 @@ function loadPublicChat() {
     const publicQuery = query(
         collection(db, "supportPublicMessages"),
         orderBy("createdAt", "desc"),
-        limit(100)
+        limit(200)
     );
     dmPublicMessagesUnsubscribe = onSnapshot(publicQuery, (snapshot) => {
         $("#dmPublicCount").textContent = String(snapshot.size);
@@ -644,7 +645,7 @@ function initializeSupportBoard() {
         try {
             await sendPublicMessage(user, value);
             input.value = "";
-            $("#dmPublicStatus").textContent = "Message posted publicly.";
+            $("#dmPublicStatus").textContent = "Your message is now visible to the community.";
         } catch (error) {
             console.error("Public message failed:", {
                 code: error?.code || "unknown",
