@@ -116,7 +116,32 @@ service cloud.firestore {
       }
     }
 
-    // The old public support board is intentionally disabled.
+    // Signed-in members can read the public community chat and create messages as themselves.
+    // Public posts are immutable from clients; only the author identity and bounded text are accepted.
+    match /supportPublicMessages/{messageId} {
+      allow get, list: if signedIn();
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'text', 'authorUid', 'authorName', 'role', 'createdAt'
+        ])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 1
+        && request.resource.data.text.size() <= 1000
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() >= 1
+        && request.resource.data.authorName.size() <= 40
+        && request.resource.data.createdAt is timestamp
+        && (
+          (isAdmin() && request.resource.data.role == 'admin')
+          || (!isAdmin() && request.resource.data.role == 'member')
+        );
+
+      allow update, delete: if false;
+    }
+
+    // Legacy public support posts remain disabled; the new public chat uses supportPublicMessages.
     match /supportPosts/{postId} {
       allow read, write: if false;
     }
