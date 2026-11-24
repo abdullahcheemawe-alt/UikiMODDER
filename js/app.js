@@ -406,8 +406,17 @@ async function loadUserConversation(user) {
         }
         watchDMConversation(user.uid, false);
     }, (error) => {
-        console.error("Could not open private conversation:", error);
-        $("#dmUserMessages").innerHTML = '<div class="dm-chat-empty">Your private inbox could not load. Please check Firestore rules.</div>';
+        console.error("Could not open private conversation:", {
+            code: error?.code || "unknown",
+            message: error?.message || String(error),
+            error
+        });
+        const box = $("#dmUserMessages");
+        if (box) {
+            box.innerHTML = '<div class="dm-chat-empty">Private inbox error: ' +
+                escapeHTML(getDMErrorMessage(error)) +
+                '<br><small>Ask the site administrator to publish the latest Firestore rules.</small></div>';
+        }
     });
 }
 
@@ -439,8 +448,14 @@ function loadOwnerInbox() {
             if (activeItem) watchDMConversation(activeItem.id, true);
         }
     }, (error) => {
-        console.error("Owner inbox could not load:", error);
-        list.innerHTML = '<div class="dm-list-empty">Inbox unavailable. Check admin access and Firestore rules.</div>';
+        console.error("Owner inbox could not load:", {
+            code: error?.code || "unknown",
+            message: error?.message || String(error),
+            error
+        });
+        list.innerHTML = '<div class="dm-list-empty">Inbox error: ' +
+            escapeHTML(getDMErrorMessage(error)) +
+            '<br><small>Check the admin account and published Firestore rules.</small></div>';
     });
 }
 
