@@ -447,9 +447,12 @@ function loadOwnerInbox() {
 async function sendDMMessage(conversationId, user, text, isAdmin) {
     const clean = String(text || "").trim();
     if (!clean || clean.length > 1500) throw new Error("Message must be between 1 and 1500 characters.");
+
     const conversationRef = doc(db, "privateConversations", conversationId);
     const conversationSnap = await getDoc(conversationRef);
     const authorName = getSupportAuthorName(user);
+    const isNewConversation = !conversationSnap.exists();
+
     const messageData = {
         text: clean,
         authorUid: user.uid,
@@ -457,8 +460,10 @@ async function sendDMMessage(conversationId, user, text, isAdmin) {
         role: isAdmin ? "admin" : "member",
         createdAt: serverTimestamp()
     };
-    if (!conversationSnap.exists()) {
+
+    if (isNewConversation) {
         if (isAdmin) throw new Error("This conversation no longer exists.");
+
         await setDoc(conversationRef, {
             ownerUid: user.uid,
             userName: authorName,
@@ -468,11 +473,45 @@ async function sendDMMessage(conversationId, user, text, isAdmin) {
             lastMessageAt: serverTimestamp()
         });
     }
-    await addDoc(collection(db, "privateConversations", conversationId, "messages"), messageData);
-    await updateDoc(conversationRef, {
-        lastMessage: (isAdmin ? "Owner: " : "") + clean.slice(0, 140),
-        lastMessageAt: serverTimestamp()
-    });
+
+    // The message write is the delivery operation. A failure to refresh the
+    // inbox preview must not make an already-saved message look unsent.
+    await addDoc(
+        collection(db, "privateConversations", conversationId, "messages"),
+        messageData
+    );
+
+    // New conversations already received their preview in setDoc above.
+    // Existing conversations need their preview updated, but this is
+    // deliberately best-effort so a preview-only failure cannot cause
+    // users to resend a message that was already delivered.
+    if (!isNewConversation) {
+        try {
+            await updateDoc(conversationRef, {
+                lastMessage: (isAdmin ? "Owner: " : "") + clean.slice(0, 140),
+                lastMessageAt: serverTimestamp()
+            });
+        } catch (error) {
+            console.warn("Message was saved, but the conversation preview did not update:", error);
+        }
+    }
+}
+
+function getDMErrorMessage(error) {
+    const code = String(error?.code || "");
+    if (code === "permission-denied") {
+        return "Message blocked by Firestore security rules (permission-denied).";
+    }
+    if (code === "unauthenticated") {
+        return "Your sign-in session expired. Please sign in again.";
+    }
+    if (code === "unavailable" || code === "network-request-failed") {
+        return "Network connection problem. Check your internet and try again.";
+    }
+    if (code === "failed-precondition") {
+        return "Firestore is not ready for this request. Check the Firebase setup.";
+    }
+    return code ? "Message failed (" + code + "). Please try again." : "Message could not be sent. Please try again.";
 }
 
 function initializeSupportBoard() {
@@ -503,8 +542,12 @@ function initializeSupportBoard() {
             input.value = "";
             $("#dmUserStatus").textContent = "Message sent privately.";
         } catch (error) {
-            console.error("Private message failed:", error);
-            $("#dmUserStatus").textContent = "Message could not be sent. Please try again.";
+            console.error("Private message failed:", {
+                code: error?.code || "unknown",
+                message: error?.message || String(error),
+                error
+            });
+            $("#dmUserStatus").textContent = getDMErrorMessage(error);
         } finally {
             button.disabled = false;
             button.textContent = "Send";
