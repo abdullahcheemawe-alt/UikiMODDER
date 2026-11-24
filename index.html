@@ -549,9 +549,16 @@
                 <strong id="dmTopTitle">Contact Owner</strong>
                 <span id="dmTopSubtitle">Private support conversation</span>
             </div>
-            <span class="dm-secure-label">PRIVATE</span>
+            <span id="dmSecureLabel" class="dm-secure-label">PRIVATE</span>
         </div>
 
+        <div class="dm-mode-switch" role="group" aria-label="Message visibility">
+            <button id="dmPrivateModeBtn" class="is-active" type="button" aria-pressed="true">Private</button>
+            <span aria-hidden="true">/</span>
+            <button id="dmPublicModeBtn" type="button" aria-pressed="false">Public</button>
+        </div>
+
+        <div id="dmPrivateModePanel">
         <div id="dmSignInPanel" class="dm-signin-panel hidden">
             <span class="dm-eyebrow">UIKIMODDER SUPPORT</span>
             <h1>Talk to the <span class="gradient-text">Owner.</span></h1>
@@ -601,6 +608,31 @@
             </form>
             <p id="dmUserStatus" class="dm-status" role="status" aria-live="polite"></p>
         </div>
+        </div>
+
+        <div id="dmPublicModePanel" class="hidden">
+            <div id="dmPublicSignInPanel" class="dm-signin-panel hidden">
+                <span class="dm-eyebrow">PUBLIC COMMUNITY</span>
+                <h1>Join the <span class="gradient-text">Conversation.</span></h1>
+                <p>Sign in to read and post messages in the public UIKIMODDER community chat.</p>
+                <button id="dmPublicSignInBtn" type="button">SIGN IN TO CHAT</button>
+            </div>
+            <section id="dmPublicChat" class="dm-public-chat hidden">
+                <div class="dm-inbox-heading">
+                    <div><span class="dm-eyebrow">COMMUNITY CHAT</span><h2>Public Messages</h2></div>
+                    <span id="dmPublicCount" class="dm-count-pill">0</span>
+                </div>
+                <div id="dmPublicMessages" class="dm-messages">
+                    <div class="dm-chat-empty"><strong>Welcome to the community.</strong><span>Start a conversation with other UIKIMODDER members.</span></div>
+                </div>
+                <form id="dmPublicMessageForm" class="dm-compose">
+                    <input id="dmPublicMessageInput" type="text" maxlength="1000" placeholder="Write a public message..." autocomplete="off" required>
+                    <button type="submit" aria-label="Post public message">Send</button>
+                </form>
+                <p id="dmPublicStatus" class="dm-status" role="status" aria-live="polite"></p>
+                <p class="dm-public-guidance">Public messages are visible to all signed-in members. Keep personal information private and treat everyone respectfully.</p>
+            </section>
+        </div>
     </section>
 
     <!-- MOBILE / APP-STYLE BOTTOM NAVIGATION -->
@@ -625,6 +657,6 @@
     <!-- JAVASCRIPT -->
     
 
-    <script type="module" src="./js/app.js?v=25"></script>
+    <script type="module" src="./js/app.js?v=26"></script>
 </body>
 </html>
